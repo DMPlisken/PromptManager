@@ -131,6 +131,17 @@ async def copy_to_execution(data: dict, db: AsyncSession = Depends(get_db)):
     return {"copied": len(task_images)}
 
 
+@router.put("/{image_id}/path")
+async def update_image_path(image_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    """Update the file_path of a task-template image."""
+    img = await db.get(TaskTemplateImage, image_id)
+    if not img:
+        raise HTTPException(404, "Image not found")
+    img.file_path = data.get("file_path", img.file_path)
+    await db.commit()
+    return {"id": img.id, "file_path": img.file_path}
+
+
 @router.delete("/{image_id}", status_code=204)
 async def delete_task_image(image_id: int, db: AsyncSession = Depends(get_db)):
     """Delete a task-template image."""

@@ -26,9 +26,11 @@ interface ImageAttachmentsProps {
 export default function ImageAttachments({ taskId, templateId, onHelp }: ImageAttachmentsProps) {
   const [images, setImages] = useState<PersistedImage[]>([]);
   const [baseFolder, setBaseFolder] = useState(getLastFolder());
-  const [showFolderEdit, setShowFolderEdit] = useState(false);
+  const [showFolderEdit, setShowFolderEdit] = useState(!getLastFolder());
   const [uploading, setUploading] = useState(false);
   const [fullImageUrl, setFullImageUrl] = useState<string | null>(null);
+  const [editingPathId, setEditingPathId] = useState<number | null>(null);
+  const [editPathValue, setEditPathValue] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
 
@@ -44,11 +46,16 @@ export default function ImageAttachments({ taskId, templateId, onHelp }: ImageAt
 
   const handleBrowseAndUpload = async (files: FileList | null) => {
     if (!files || !templateId) return;
+    if (!baseFolder.trim()) {
+      toast.warning("Set base folder first", "Click 'change' to set your local screenshots folder path before adding images.");
+      setShowFolderEdit(true);
+      return;
+    }
     setUploading(true);
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (!file.type.startsWith("image/")) continue;
-      const folder = baseFolder ? (baseFolder.endsWith("\\") || baseFolder.endsWith("/") ? baseFolder : baseFolder + "\\") : "";
+      const folder = baseFolder.endsWith("\\") || baseFolder.endsWith("/") ? baseFolder : baseFolder + "\\";
       const filePath = folder + file.name;
       try {
         await api.uploadTaskImage(taskId, templateId, file, filePath, images.length + i);
@@ -67,6 +74,28 @@ export default function ImageAttachments({ taskId, templateId, onHelp }: ImageAt
       await loadImages();
       toast.info("Image removed");
     } catch { toast.error("Failed to remove image"); }
+  };
+
+  const handleUpdatePath = async (imgId: number) => {
+    if (!editPathValue.trim()) return;
+    try {
+      // Delete old and re-add with new path (simplest approach)
+      const img = images.find((i) => i.id === imgId);
+      if (!img) return;
+      // Update via backend - we need a PATCH endpoint, but for now re-create
+      // Actually just update the file_path in the DB
+      const res = await fetch(`/api/task-images/${imgId}/path`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file_path: editPathValue.trim() }),
+      });
+      if (!res.ok) throw new Error("Update failed");
+      setEditingPathId(null);
+      toast.success("Path updated");
+      await loadImages();
+    } catch {
+      toast.error("Failed to update path");
+    }
   };
 
   const inputStyle: React.CSSProperties = {
@@ -91,19 +120,40 @@ export default function ImageAttachments({ taskId, templateId, onHelp }: ImageAt
           </Button>
         </CardHeader>
         <CardBody>
-          {/* Base folder */}
-          <div style={{ marginBottom: 10 }}>
+          {/* Base folder — prominent when not set */}
+          <div style={{
+            marginBottom: 12, padding: "8px 12px", borderRadius: "var(--radius)",
+            background: !baseFolder.trim() ? "rgba(224,85,85,0.1)" : "var(--bg-input)",
+            border: !baseFolder.trim() ? "1px solid rgba(224,85,85,0.3)" : "1px solid var(--border)",
+          }}>
             {showFolderEdit ? (
-              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span style={{ fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>Base folder:</span>
-                <input value={baseFolder} onChange={(e) => setBaseFolder(e.target.value)}
-                  placeholder="e.g., C:\Users\screenshots" style={{ ...inputStyle, flex: 1, fontSize: 12, fontFamily: "monospace" }} />
-                <Button variant="primary" onClick={() => { saveLastFolder(baseFolder); setShowFolderEdit(false); }} style={{ fontSize: 11, padding: "4px 10px" }}>Save</Button>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: !baseFolder.trim() ? "var(--danger)" : "var(--text-secondary)", marginBottom: 6 }}>
+                  {!baseFolder.trim() ? "Set your local image folder path (required)" : "Base folder for image paths"}
+                </div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input
+                    value={baseFolder}
+                    onChange={(e) => setBaseFolder(e.target.value)}
+                    placeholder="e.g., C:\Users\DoronMarcu\Pictures\Screenshots"
+                    autoFocus
+                    style={{ ...inputStyle, flex: 1, fontSize: 12, fontFamily: "monospace" }}
+                  />
+                  <Button variant="primary" onClick={() => {
+                    if (!baseFolder.trim()) { toast.warning("Enter a folder path"); return; }
+                    saveLastFolder(baseFolder);
+                    setShowFolderEdit(false);
+                    toast.success("Base folder saved");
+                  }} style={{ fontSize: 11, padding: "4px 12px" }}>Save</Button>
+                </div>
+                <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>
+                  This is the folder on YOUR computer where screenshots are stored. It will be prepended to filenames when you browse for images.
+                </div>
               </div>
             ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
                 <span style={{ color: "var(--text-muted)" }}>Base folder:</span>
-                <span style={{ color: "var(--text-secondary)", fontFamily: "monospace" }}>{baseFolder || "(not set)"}</span>
+                <span style={{ color: "var(--text-secondary)", fontFamily: "monospace", flex: 1 }}>{baseFolder}</span>
                 <button onClick={() => setShowFolderEdit(true)} style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, cursor: "pointer", textDecoration: "underline" }}>change</button>
               </div>
             )}
@@ -115,15 +165,16 @@ export default function ImageAttachments({ taskId, templateId, onHelp }: ImageAt
 
           {/* Image grid */}
           {images.length === 0 ? (
-            <div style={{ padding: "16px 0", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
+            <div style={{ padding: "12px 0", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
               No images attached. Click "+ Add Image" to browse and attach screenshots.
             </div>
           ) : (
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {images.map((img) => (
                 <div key={img.id} style={{
-                  position: "relative", width: 100, borderRadius: "var(--radius)",
-                  border: "1px solid var(--border)", overflow: "hidden", background: "var(--bg-input)",
+                  display: "flex", alignItems: "center", gap: 10, padding: "8px 10px",
+                  background: "var(--bg-input)", borderRadius: "var(--radius)",
+                  border: "1px solid var(--border)",
                 }}>
                   {/* Thumbnail */}
                   {img.thumbnail_url ? (
@@ -131,20 +182,38 @@ export default function ImageAttachments({ taskId, templateId, onHelp }: ImageAt
                       src={img.thumbnail_url}
                       alt={img.original_name}
                       onClick={() => setFullImageUrl(img.thumbnail_url)}
-                      style={{ width: 100, height: 75, objectFit: "cover", cursor: "pointer", display: "block" }}
+                      style={{ width: 50, height: 38, objectFit: "cover", cursor: "pointer", borderRadius: 3, flexShrink: 0 }}
                     />
                   ) : (
-                    <div style={{ width: 100, height: 75, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 24 }}>
+                    <div style={{ width: 50, height: 38, borderRadius: 3, flexShrink: 0, background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 16 }}>
                       {"\uD83D\uDDBC"}
                     </div>
                   )}
-                  {/* Name + remove */}
-                  <div style={{ padding: "4px 6px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 9, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }} title={img.file_path}>
-                      {img.original_name}
-                    </span>
-                    <button onClick={() => handleRemove(img.id)} style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 12, cursor: "pointer", padding: 0, marginLeft: 4 }} title="Remove">x</button>
+                  {/* Path info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {editingPathId === img.id ? (
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <input value={editPathValue} onChange={(e) => setEditPathValue(e.target.value)}
+                          style={{ ...inputStyle, fontSize: 11, fontFamily: "monospace", padding: "4px 8px" }}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleUpdatePath(img.id); }} />
+                        <Button variant="primary" onClick={() => handleUpdatePath(img.id)} style={{ fontSize: 10, padding: "2px 8px" }}>ok</Button>
+                        <Button variant="secondary" onClick={() => setEditingPathId(null)} style={{ fontSize: 10, padding: "2px 8px" }}>x</Button>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-primary)" }}>
+                          {img.original_name}
+                        </div>
+                        <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}
+                          title="Click to edit path"
+                          onClick={() => { setEditingPathId(img.id); setEditPathValue(img.file_path); }}>
+                          {img.file_path}
+                          <span style={{ marginLeft: 4, color: "var(--accent)", fontSize: 9 }}>edit</span>
+                        </div>
+                      </>
+                    )}
                   </div>
+                  <button onClick={() => handleRemove(img.id)} style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 14, cursor: "pointer", padding: "0 4px" }} title="Remove">x</button>
                 </div>
               ))}
             </div>
@@ -165,7 +234,6 @@ export default function ImageAttachments({ taskId, templateId, onHelp }: ImageAt
   );
 }
 
-// Export helper to get image paths for copy
 export async function getTemplateImagePaths(taskId: number, templateId: number): Promise<string[]> {
   try {
     const imgs = await api.getTaskTemplateImages(taskId, templateId);
