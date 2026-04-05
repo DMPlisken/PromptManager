@@ -9,6 +9,7 @@ import EmptyState from "../components/ui/EmptyState";
 import SaveIndicator, { type SaveState } from "../components/ui/SaveIndicator";
 import StepBar from "../components/ui/StepBar";
 import ImageAttachments, { getTemplateImagePaths } from "../components/ImageAttachments";
+import { copyToClipboard } from "../utils/clipboard";
 import type { Task, PromptGroup, PromptTemplate } from "../types";
 
 const inputStyle: React.CSSProperties = {
@@ -168,7 +169,7 @@ export default function TaskDetailPage({ onHelp }: { onHelp?: (id: string) => vo
         }
       } catch { /* no images */ }
     }
-    await navigator.clipboard.writeText(fullText);
+    await copyToClipboard(fullText);
     toast.success("Copied to clipboard");
   };
 

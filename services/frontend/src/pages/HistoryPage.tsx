@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
+import { copyToClipboard } from "../utils/clipboard";
 import { useToast } from "../components/Toast";
 import HelpButton from "../components/HelpButton";
 import Button from "../components/ui/Button";
@@ -80,7 +81,7 @@ export default function HistoryPage({ onHelp }: { onHelp?: (id: string) => void 
   };
 
   const handleCopy = async (text: string) => {
-    await navigator.clipboard.writeText(text);
+    await copyToClipboard(text);
     toast.success("Copied to clipboard");
   };
 

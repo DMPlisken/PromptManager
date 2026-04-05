@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
+import { copyToClipboard } from "../utils/clipboard";
 import { useToast } from "../components/Toast";
 import HelpButton from "../components/HelpButton";
 import Button from "../components/ui/Button";
@@ -290,7 +291,7 @@ export default function GroupPage({ onHelp }: { onHelp?: (id: string) => void })
   const rendered = selectedTmpl ? renderPrompt(selectedTmpl.content, varValues) : "";
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(rendered);
+    await copyToClipboard(rendered);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
