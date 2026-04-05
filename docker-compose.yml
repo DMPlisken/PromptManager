@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:16-alpine
@@ -33,21 +31,18 @@ services:
         condition: service_healthy
     volumes:
       - ./services/backend/app:/app/app
+      - image_uploads:/app/uploads
 
   frontend:
     build:
       context: ./services/frontend
       dockerfile: Dockerfile
     restart: unless-stopped
-    environment:
-      VITE_API_URL: http://localhost:${BACKEND_PORT:-8000}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
       - backend
-    volumes:
-      - ./services/frontend/src:/app/src
-      - ./services/frontend/public:/app/public
 
 volumes:
   pgdata:
+  image_uploads:

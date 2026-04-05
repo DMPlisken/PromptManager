@@ -1,6 +1,9 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
+import { useToast } from "../components/Toast";
+import HelpButton from "../components/HelpButton";
+import Button from "../components/ui/Button";
 import type { PromptGroup, Variable, PromptTemplate } from "../types";
 
 const btnStyle = (variant: "primary" | "secondary" | "danger" = "primary"): React.CSSProperties => ({
@@ -28,13 +31,201 @@ const cardStyle: React.CSSProperties = {
 function renderPrompt(content: string, values: Record<string, string>): string {
   return content.replace(/\{\{(.+?)\}\}/g, (match, key) => {
     const k = key.trim();
-    return values[k] !== undefined && values[k] !== "" ? values[k] : match;
+    const val = values[k];
+    return val !== undefined && val.trim() !== "" ? val.trimEnd() : match;
   });
 }
 
-export default function GroupPage() {
+function TemplateEditor({ tmplName, setTmplName, tmplContent, setTmplContent, variables, onSubmit, submitLabel }: {
+  tmplName: string; setTmplName: (v: string) => void;
+  tmplContent: string; setTmplContent: (v: string) => void;
+  variables: Variable[];
+  onSubmit: (e: React.FormEvent) => void;
+  submitLabel: string;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const lastCursorPos = useRef(0);
+  const savedScrollTop = useRef(0);
+  const [justInserted, setJustInserted] = useState<string | null>(null);
+  const [acQuery, setAcQuery] = useState<string | null>(null);
+  const [acPos, setAcPos] = useState(0);
+
+  // Restore scroll position after content changes from insertion
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (ta && savedScrollTop.current > 0) {
+      ta.scrollTop = savedScrollTop.current;
+    }
+  }, [tmplContent]);
+
+  const trackCursor = () => {
+    const ta = textareaRef.current;
+    if (ta) lastCursorPos.current = ta.selectionStart;
+  };
+
+  const insertTag = (varName: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const tag = `{{${varName}}}`;
+    const pos = lastCursorPos.current;
+    savedScrollTop.current = ta.scrollTop;
+    const before = tmplContent.slice(0, pos);
+    const after = tmplContent.slice(pos);
+    const newPos = pos + tag.length;
+    setTmplContent(before + tag + after);
+    lastCursorPos.current = newPos;
+    setJustInserted(varName);
+    setTimeout(() => setJustInserted(null), 1200);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = newPos;
+      ta.scrollTop = savedScrollTop.current;
+    });
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    const pos = e.target.selectionStart;
+    setTmplContent(val);
+    lastCursorPos.current = pos;
+    // Check for {{ autocomplete trigger
+    if (pos >= 2 && val.slice(pos - 2, pos) === "{{") {
+      setAcQuery("");
+      setAcPos(pos - 2);
+    } else if (acQuery !== null) {
+      // Continue filtering if we're in autocomplete mode
+      const textAfterOpen = val.slice(acPos + 2, pos);
+      if (textAfterOpen.includes("}}") || textAfterOpen.includes("\n") || pos <= acPos) {
+        setAcQuery(null);
+      } else {
+        setAcQuery(textAfterOpen);
+      }
+    }
+  };
+
+  const handleAcSelect = (varName: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    savedScrollTop.current = ta.scrollTop;
+    const replacement = `{{${varName}}}`;
+    const before = tmplContent.slice(0, acPos);
+    const cursorPos = ta.selectionStart;
+    const after = tmplContent.slice(cursorPos);
+    const newPos = acPos + replacement.length;
+    setTmplContent(before + replacement + after);
+    lastCursorPos.current = newPos;
+    setAcQuery(null);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = newPos;
+      ta.scrollTop = savedScrollTop.current;
+    });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (acQuery !== null && e.key === "Escape") {
+      e.preventDefault();
+      setAcQuery(null);
+    }
+  };
+
+  const filteredVars = acQuery !== null
+    ? variables.filter((v) => v.name.toLowerCase().includes(acQuery.toLowerCase()))
+    : [];
+
+  return (
+    <form onSubmit={onSubmit} style={{ marginBottom: 12, padding: 12, background: "var(--bg-input)", borderRadius: "var(--radius)" }}>
+      <input value={tmplName} onChange={(e) => setTmplName(e.target.value)} placeholder="Template name" style={{ ...inputStyle, marginBottom: 8 }} />
+
+      {/* Variable pills - click to insert at cursor */}
+      {variables.length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>
+            Click to insert at cursor position, or type {"{{" } in the editor:
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
+            {variables.map((v) => (
+              <span
+                key={v.id}
+                onClick={() => insertTag(v.name)}
+                style={{
+                  padding: "3px 10px", fontSize: 12, fontFamily: "monospace",
+                  background: justInserted === v.name ? "var(--accent)" : "var(--accent-light)",
+                  color: justInserted === v.name ? "#fff" : "var(--accent)",
+                  border: "1px solid var(--accent)", borderRadius: 20,
+                  cursor: "pointer", userSelect: "none", fontWeight: 600,
+                  transition: "all 0.15s ease",
+                  transform: justInserted === v.name ? "scale(0.93)" : "scale(1)",
+                }}
+                title={`Click to insert {{${v.name}}} at cursor`}
+              >
+                {"+ {{" + v.name + "}}"}
+              </span>
+            ))}
+            {justInserted && (
+              <span style={{ fontSize: 11, color: "var(--success)", fontWeight: 500, marginLeft: 4, transition: "opacity 0.3s" }}>
+                Inserted!
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Template content textarea with autocomplete */}
+      <div style={{ position: "relative" }}>
+        <textarea
+          ref={textareaRef}
+          value={tmplContent}
+          onChange={handleChange}
+          onBlur={trackCursor}
+          onSelect={trackCursor}
+          onKeyUp={trackCursor}
+          onKeyDown={handleKeyDown}
+          placeholder={"Write your prompt template here...\n\nUse {{VARIABLE_NAME}} for placeholders.\nType {{ to see available variables.\n\nExample:\nPlease review {{TASK_TITLE}}:\n{{DESCRIPTION}}"}
+          rows={18}
+          style={{ ...inputStyle, resize: "vertical", fontFamily: "monospace", fontSize: 13, marginBottom: 8, minHeight: 300 }}
+        />
+
+        {/* {{ autocomplete dropdown */}
+        {acQuery !== null && filteredVars.length > 0 && (
+          <div style={{
+            position: "absolute", bottom: 16, left: 8, right: 8,
+            background: "var(--bg-secondary)", border: "1px solid var(--accent)",
+            borderRadius: "var(--radius)", boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+            zIndex: 10, maxHeight: 180, overflowY: "auto",
+          }}>
+            <div style={{ padding: "6px 10px", fontSize: 11, color: "var(--text-muted)", borderBottom: "1px solid var(--border)" }}>
+              Select variable to insert:
+            </div>
+            {filteredVars.map((v) => (
+              <div
+                key={v.id}
+                onClick={() => handleAcSelect(v.name)}
+                style={{
+                  padding: "8px 12px", fontSize: 13, fontFamily: "monospace",
+                  color: "var(--accent)", cursor: "pointer",
+                  borderBottom: "1px solid var(--border)",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--accent-light)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                {"{{" + v.name + "}}"}
+                {v.description && <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 8, fontFamily: "inherit" }}>{v.description}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <button type="submit" style={btnStyle("primary")}>{submitLabel} Template</button>
+    </form>
+  );
+}
+
+export default function GroupPage({ onHelp }: { onHelp?: (id: string) => void }) {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
+  const toast = useToast();
   const gid = Number(groupId);
 
   const [group, setGroup] = useState<PromptGroup | null>(null);
@@ -51,17 +242,25 @@ export default function GroupPage() {
   const [groupName, setGroupName] = useState("");
   const [groupDesc, setGroupDesc] = useState("");
 
-  // New variable
+  // New/Edit variable
   const [showNewVar, setShowNewVar] = useState(false);
   const [newVarName, setNewVarName] = useState("");
   const [newVarType, setNewVarType] = useState("text");
   const [newVarDefault, setNewVarDefault] = useState("");
+  const [editVarId, setEditVarId] = useState<number | null>(null);
+  const [editVarName, setEditVarName] = useState("");
+  const [editVarType, setEditVarType] = useState("text");
+  const [editVarDefault, setEditVarDefault] = useState("");
 
   // New/Edit template
   const [showNewTmpl, setShowNewTmpl] = useState(false);
   const [editTmplId, setEditTmplId] = useState<number | null>(null);
   const [tmplName, setTmplName] = useState("");
   const [tmplContent, setTmplContent] = useState("");
+
+  // Export modal
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportSelection, setExportSelection] = useState<Set<number>>(new Set());
 
   const load = async () => {
     try {
@@ -73,12 +272,13 @@ export default function GroupPage() {
       setGroup(g);
       setVariables(v);
       setTemplates(t);
-      // Init var values from defaults
-      const defaults: Record<string, string> = {};
-      v.forEach((vr) => { defaults[vr.name] = vr.default_value || ""; });
+      // Rebuild var values: only keep values for variables that still exist
+      const currentNames = new Set(v.map((vr) => vr.name));
       setVarValues((prev) => {
-        const merged = { ...defaults };
-        Object.keys(prev).forEach((k) => { if (prev[k]) merged[k] = prev[k]; });
+        const merged: Record<string, string> = {};
+        v.forEach((vr) => {
+          merged[vr.name] = prev[vr.name] ?? vr.default_value ?? "";
+        });
         return merged;
       });
     } catch { /* */ }
@@ -104,17 +304,18 @@ export default function GroupPage() {
         filled_prompt: rendered, variable_values: varValues, notes: notes || undefined,
       });
       setNotes("");
-      alert("Execution saved to history!");
+      toast.success("Saved to history");
     } catch (e) {
-      alert("Failed to save: " + e);
+      toast.error("Failed to save", String(e));
     }
     setSaving(false);
   };
 
   const handleDeleteGroup = async () => {
-    if (!confirm(`Delete group "${group?.name}" and all its templates?`)) return;
     await api.deleteGroup(gid);
-    navigate("/");
+    toast.success("Group deleted");
+    window.dispatchEvent(new Event("groups-changed"));
+    navigate("/tasks");
   };
 
   const handleUpdateGroup = async (e: React.FormEvent) => {
@@ -135,6 +336,15 @@ export default function GroupPage() {
   const handleDeleteVariable = async (id: number) => {
     await api.deleteVariable(id);
     await load();
+    toast.success("Variable deleted");
+  };
+
+  const handleUpdateVariable = async (id: number) => {
+    if (!editVarName.trim()) return;
+    await api.updateVariable(id, { name: editVarName.trim(), var_type: editVarType, default_value: editVarDefault || undefined });
+    setEditVarId(null);
+    await load();
+    toast.success("Variable updated");
   };
 
   const handleSaveTemplate = async (e: React.FormEvent) => {
@@ -150,16 +360,16 @@ export default function GroupPage() {
   };
 
   const handleDeleteTemplate = async (id: number) => {
-    if (!confirm("Delete this template?")) return;
     await api.deleteTemplate(id);
     if (selectedTemplate === id) setSelectedTemplate(null);
     await load();
+    toast.success("Template deleted");
   };
 
   if (!group) return <p style={{ color: "var(--text-muted)" }}>Loading...</p>;
 
   return (
-    <div style={{ maxWidth: 1100 }}>
+    <div style={{ maxWidth: 1400 }}>
       {/* Group Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         {editingGroup ? (
@@ -177,7 +387,8 @@ export default function GroupPage() {
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => { setGroupName(group.name); setGroupDesc(group.description || ""); setEditingGroup(true); }} style={btnStyle("secondary")}>Edit</button>
-              <button onClick={handleDeleteGroup} style={btnStyle("danger")}>Delete</button>
+              <Button variant="secondary" onClick={() => { setExportSelection(new Set(templates.map((t) => t.id))); setShowExportModal(true); }}>Export</Button>
+              <Button variant="destructive" confirm onClick={handleDeleteGroup}>Delete</Button>
             </div>
           </>
         )}
@@ -189,7 +400,10 @@ export default function GroupPage() {
           {/* Variables Section */}
           <div style={cardStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <h3 style={{ fontSize: 15, fontWeight: 600 }}>Variables</h3>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 600 }}>Variables</h3>
+                {onHelp && <HelpButton onClick={() => onHelp("variables")} />}
+              </div>
               <button onClick={() => setShowNewVar(!showNewVar)} style={btnStyle("secondary")}>
                 {showNewVar ? "Cancel" : "+ Add"}
               </button>
@@ -215,33 +429,62 @@ export default function GroupPage() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {variables.map((v) => (
-                  <div key={v.id} style={{ display: "flex", gap: 8, alignItems: "start" }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4 }}>
-                        {"{{" + v.name + "}}"}
-                        <span style={{ fontWeight: 400, marginLeft: 6, color: "var(--text-muted)" }}>{v.var_type}</span>
-                      </label>
-                      {v.var_type === "textarea" ? (
-                        <textarea
-                          value={varValues[v.name] || ""}
-                          onChange={(e) => setVarValues({ ...varValues, [v.name]: e.target.value })}
-                          rows={3}
-                          style={{ ...inputStyle, resize: "vertical" }}
-                        />
-                      ) : (
-                        <input
-                          type={v.var_type === "number" ? "number" : "text"}
-                          value={varValues[v.name] || ""}
-                          onChange={(e) => setVarValues({ ...varValues, [v.name]: e.target.value })}
-                          placeholder={v.default_value || ""}
-                          style={inputStyle}
-                        />
-                      )}
-                    </div>
-                    <button onClick={() => handleDeleteVariable(v.id)} title="Delete variable" style={{
-                      marginTop: 22, padding: "4px 8px", background: "transparent", border: "none",
-                      color: "var(--text-muted)", fontSize: 16, cursor: "pointer",
-                    }}>x</button>
+                  <div key={v.id}>
+                    {editVarId === v.id ? (
+                      /* Edit mode */
+                      <div style={{ padding: 10, background: "var(--bg-input)", borderRadius: "var(--radius)", border: "1px solid var(--accent)" }}>
+                        <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                          <input value={editVarName} onChange={(e) => setEditVarName(e.target.value)} placeholder="Variable name" style={{ ...inputStyle, flex: 1, fontSize: 12 }} />
+                          <select value={editVarType} onChange={(e) => setEditVarType(e.target.value)} style={{ ...inputStyle, width: "auto", fontSize: 12 }}>
+                            <option value="text">text</option>
+                            <option value="textarea">textarea</option>
+                            <option value="number">number</option>
+                          </select>
+                        </div>
+                        <input value={editVarDefault} onChange={(e) => setEditVarDefault(e.target.value)} placeholder="Default value (optional)" style={{ ...inputStyle, fontSize: 12, marginBottom: 6 }} />
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <button type="button" onClick={() => handleUpdateVariable(v.id)} style={{ ...btnStyle("primary"), fontSize: 11, padding: "3px 10px" }}>Save</button>
+                          <button type="button" onClick={() => setEditVarId(null)} style={{ ...btnStyle("secondary"), fontSize: 11, padding: "3px 10px" }}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* View mode */
+                      <div style={{ display: "flex", gap: 8, alignItems: "start" }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4 }}>
+                            {"{{" + v.name + "}}"}
+                            <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>{v.var_type}</span>
+                            {v.default_value && <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 11 }}>default: {v.default_value}</span>}
+                          </label>
+                          {v.var_type === "textarea" ? (
+                            <textarea
+                              value={varValues[v.name] || ""}
+                              onChange={(e) => setVarValues({ ...varValues, [v.name]: e.target.value })}
+                              rows={3}
+                              style={{ ...inputStyle, resize: "vertical" }}
+                            />
+                          ) : (
+                            <input
+                              type={v.var_type === "number" ? "number" : "text"}
+                              value={varValues[v.name] || ""}
+                              onChange={(e) => setVarValues({ ...varValues, [v.name]: e.target.value })}
+                              placeholder={v.default_value || ""}
+                              style={inputStyle}
+                            />
+                          )}
+                        </div>
+                        <div style={{ display: "flex", gap: 2, marginTop: 22 }}>
+                          <button onClick={() => { setEditVarId(v.id); setEditVarName(v.name); setEditVarType(v.var_type); setEditVarDefault(v.default_value || ""); }} title="Edit variable" style={{
+                            padding: "3px 6px", background: "transparent", border: "none",
+                            color: "var(--text-muted)", fontSize: 11, cursor: "pointer",
+                          }}>edit</button>
+                          <button onClick={() => handleDeleteVariable(v.id)} title="Delete variable" style={{
+                            padding: "3px 6px", background: "transparent", border: "none",
+                            color: "var(--text-muted)", fontSize: 11, cursor: "pointer",
+                          }}>del</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -251,25 +494,22 @@ export default function GroupPage() {
           {/* Templates Section */}
           <div style={cardStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <h3 style={{ fontSize: 15, fontWeight: 600 }}>Templates</h3>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 600 }}>Templates</h3>
+                {onHelp && <HelpButton onClick={() => onHelp("templates")} />}
+              </div>
               <button onClick={() => { setShowNewTmpl(!showNewTmpl); setEditTmplId(null); setTmplName(""); setTmplContent(""); }} style={btnStyle("secondary")}>
                 {showNewTmpl ? "Cancel" : "+ Add"}
               </button>
             </div>
 
-            {showNewTmpl && (
-              <form onSubmit={handleSaveTemplate} style={{ marginBottom: 12, padding: 12, background: "var(--bg-input)", borderRadius: "var(--radius)" }}>
-                <input value={tmplName} onChange={(e) => setTmplName(e.target.value)} placeholder="Template name" style={{ ...inputStyle, marginBottom: 8 }} />
-                <textarea
-                  value={tmplContent}
-                  onChange={(e) => setTmplContent(e.target.value)}
-                  placeholder={"Use {{VARIABLE_NAME}} for placeholders...\n\nExample:\nPlease review {{TASK_TITLE}}:\n{{DESCRIPTION}}"}
-                  rows={8}
-                  style={{ ...inputStyle, resize: "vertical", fontFamily: "monospace", fontSize: 13, marginBottom: 8 }}
-                />
-                <button type="submit" style={btnStyle("primary")}>{editTmplId ? "Update" : "Create"} Template</button>
-              </form>
-            )}
+            {showNewTmpl && <TemplateEditor
+              tmplName={tmplName} setTmplName={setTmplName}
+              tmplContent={tmplContent} setTmplContent={setTmplContent}
+              variables={variables}
+              onSubmit={handleSaveTemplate}
+              submitLabel={editTmplId ? "Update" : "Create"}
+            />}
 
             {templates.length === 0 ? (
               <p style={{ fontSize: 13, color: "var(--text-muted)" }}>No templates yet. Create one to start building prompts.</p>
@@ -299,7 +539,10 @@ export default function GroupPage() {
         {/* Right Column: Preview */}
         <div>
           <div style={cardStyle}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Prompt Preview</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 600 }}>Prompt Preview</h3>
+              {onHelp && <HelpButton onClick={() => onHelp("preview")} />}
+            </div>
 
             {selectedTmpl ? (
               <>
@@ -323,7 +566,10 @@ export default function GroupPage() {
 
                 {/* Save Execution */}
                 <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
-                  <h4 style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>Save to History</h4>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <h4 style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Save to History</h4>
+                    {onHelp && <HelpButton onClick={() => onHelp("executions")} />}
+                  </div>
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
@@ -344,6 +590,61 @@ export default function GroupPage() {
           </div>
         </div>
       </div>
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <>
+          <div onClick={() => setShowExportModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000 }} />
+          <div style={{
+            position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+            background: "var(--bg-secondary)", border: "1px solid var(--border)",
+            borderRadius: "var(--radius-lg)", padding: 24, zIndex: 1001, minWidth: 400,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+          }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Export Templates</h3>
+            <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
+              <Button variant="secondary" onClick={() => setExportSelection(new Set(templates.map((t) => t.id)))} style={{ fontSize: 11 }}>Select All</Button>
+              <Button variant="secondary" onClick={() => setExportSelection(new Set())} style={{ fontSize: 11 }}>Deselect All</Button>
+            </div>
+            <div style={{ maxHeight: 300, overflowY: "auto", marginBottom: 16 }}>
+              {templates.map((t) => (
+                <label key={t.id} style={{
+                  display: "flex", alignItems: "center", gap: 8, padding: "8px 10px",
+                  borderRadius: "var(--radius)", cursor: "pointer", fontSize: 14,
+                  background: exportSelection.has(t.id) ? "var(--accent-light)" : "transparent",
+                }}>
+                  <input type="checkbox" checked={exportSelection.has(t.id)}
+                    onChange={(e) => {
+                      setExportSelection((prev) => {
+                        const next = new Set(prev);
+                        e.target.checked ? next.add(t.id) : next.delete(t.id);
+                        return next;
+                      });
+                    }}
+                    style={{ accentColor: "var(--accent)", width: 16, height: 16 }} />
+                  {t.name}
+                </label>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <Button variant="secondary" onClick={() => setShowExportModal(false)}>Cancel</Button>
+              <Button variant="primary" onClick={async () => {
+                try {
+                  const ids = exportSelection.size > 0 && exportSelection.size < templates.length
+                    ? Array.from(exportSelection) : undefined;
+                  await api.exportGroup(gid, ids);
+                  setShowExportModal(false);
+                  toast.success("Group exported");
+                } catch (e) {
+                  toast.error("Export failed", String(e));
+                }
+              }}>
+                Export {exportSelection.size > 0 ? `${exportSelection.size} Templates` : "All"}
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

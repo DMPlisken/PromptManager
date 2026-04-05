@@ -6,6 +6,29 @@ Before starting any development task, **always read these files first**:
 
 1. **`docs/ROADMAP_PROGRESS.md`** — What has been completed and what remains.
 2. **`docs/BUG_REGISTRY.md`** — Known bug patterns and fixes.
+3. **`docs/USER_MANUAL.md`** — Current user manual. Understand existing features before adding/changing.
+
+## GitHub Issue Workflow (MANDATORY — NO EXCEPTIONS)
+
+**Every feature, enhancement, bug fix, or change MUST have a GitHub Issue.** This is a non-negotiable rule.
+
+### Before Starting Work
+
+1. **Create a GitHub Issue** using `gh issue create --repo DMPlisken/PromptManager` before writing any code.
+   - **Feature/Enhancement** → label `enhancement`
+   - **Bug fix** → label `bug`
+   - Include: title, description, acceptance criteria.
+2. **Create a branch** from `develop` named after the issue: `<type>/<issue-number>-<short-description>` (e.g., `feat/5-add-task-system`).
+3. Reference the issue number in all commits and PR titles.
+
+### After Completing Work
+
+1. **Close the issue** with a comment referencing the PR or commit: `gh issue close <number> --repo DMPlisken/PromptManager`
+2. If the issue was a bug, also update `docs/BUG_REGISTRY.md`.
+
+### Exception
+
+Only skip issue creation if the user explicitly says: "No issue for this." In that case, still reference the work in commit messages.
 
 ## Required Updates After Any Work
 
@@ -13,6 +36,14 @@ After completing any development task:
 
 1. **Update `docs/ROADMAP_PROGRESS.md`** — Mark completed items as DONE with commit hash/PR number.
 2. **Update `docs/BUG_REGISTRY.md`** — If you found and fixed a bug, document the root cause pattern, symptom, fix, and affected files.
+3. **Update `docs/USER_MANUAL.md`** (MANDATORY) — Whenever features are **added, changed, or removed**, the user manual MUST be updated to reflect the current state of the application. This includes:
+   - New features or UI elements: add a section or update existing sections describing how to use them.
+   - Changed behavior or UI: update the relevant section to match the new behavior.
+   - Removed features: remove or mark the relevant section.
+   - Changed ports, commands, or configuration: update the Docker/setup section.
+   - Update the "Last updated" date at the top of the manual.
+   - The manual must always accurately describe what the user sees and can do **right now**. Never leave it outdated.
+4. **Close the GitHub Issue** — Every completed feature/fix must have its issue closed with a comment.
 
 ## Prompt Log (MANDATORY — Every Prompt)
 

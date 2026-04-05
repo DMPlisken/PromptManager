@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
+import HelpButton from "../components/HelpButton";
 import type { PromptGroup } from "../types";
 
-export default function Dashboard() {
+export default function Dashboard({ onHelp }: { onHelp?: (id: string) => void }) {
   const [groups, setGroups] = useState<PromptGroup[]>([]);
 
   useEffect(() => {
@@ -12,7 +13,10 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 20 }}>Dashboard</h2>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700 }}>Dashboard</h2>
+        {onHelp && <HelpButton onClick={() => onHelp("dashboard")} />}
+      </div>
 
       {groups.length === 0 ? (
         <div style={{

@@ -9,17 +9,20 @@ class ExecutionCreate(BaseModel):
     filled_prompt: str
     variable_values: dict[str, str]
     notes: str | None = None
+    task_id: int | None = None
 
 
 class ExecutionResponse(BaseModel):
     id: int
     group_id: int
     template_id: int
+    task_id: int | None = None
     filled_prompt: str
     variable_values: dict
     notes: str | None
     created_at: datetime
     group_name: str | None = None
     template_name: str | None = None
+    task_name: str | None = None
 
     model_config = {"from_attributes": True}

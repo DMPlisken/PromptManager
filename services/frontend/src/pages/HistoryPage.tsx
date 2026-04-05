@@ -1,18 +1,32 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api/client";
+import { useToast } from "../components/Toast";
+import HelpButton from "../components/HelpButton";
+import Button from "../components/ui/Button";
+import EmptyState from "../components/ui/EmptyState";
 import type { TaskExecution, PromptGroup } from "../types";
 
-export default function HistoryPage() {
+interface TaskGroup {
+  taskId: number | null;
+  taskName: string;
+  executions: TaskExecution[];
+}
+
+export default function HistoryPage({ onHelp }: { onHelp?: (id: string) => void }) {
   const [executions, setExecutions] = useState<TaskExecution[]>([]);
   const [groups, setGroups] = useState<PromptGroup[]>([]);
   const [filterGroup, setFilterGroup] = useState<number | undefined>();
   const [expanded, setExpanded] = useState<number | null>(null);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [collapsedTasks, setCollapsedTasks] = useState<Set<string>>(new Set());
+  const [execImages, setExecImages] = useState<Record<number, Array<{ original_name: string; file_path: string; url: string | null }>>>({});
+  const [fullImageUrl, setFullImageUrl] = useState<string | null>(null);
+  const toast = useToast();
 
   const load = async () => {
     try {
       const [execs, gs] = await Promise.all([
-        api.getExecutions({ group_id: filterGroup, limit: 100 }),
+        api.getExecutions({ group_id: filterGroup, limit: 200 }),
         api.getGroups(),
       ]);
       setExecutions(execs);
@@ -22,16 +36,58 @@ export default function HistoryPage() {
 
   useEffect(() => { load(); }, [filterGroup]);
 
-  const handleCopy = async (text: string, id: number) => {
+  // Group executions by task
+  const taskGroups = useMemo((): TaskGroup[] => {
+    const map = new Map<string, TaskGroup>();
+    for (const ex of executions) {
+      const key = ex.task_id ? String(ex.task_id) : "__ungrouped__";
+      if (!map.has(key)) {
+        map.set(key, {
+          taskId: ex.task_id,
+          taskName: ex.task_name || "Ungrouped",
+          executions: [],
+        });
+      }
+      map.get(key)!.executions.push(ex);
+    }
+    // Tasks with executions first (by most recent), ungrouped last
+    const result = Array.from(map.values());
+    result.sort((a, b) => {
+      if (a.taskId === null) return 1;
+      if (b.taskId === null) return -1;
+      return new Date(b.executions[0].created_at).getTime() - new Date(a.executions[0].created_at).getTime();
+    });
+    return result;
+  }, [executions]);
+
+  const toggleTaskCollapse = (key: string) => {
+    setCollapsedTasks((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const handleExpand = async (exId: number) => {
+    if (expanded === exId) { setExpanded(null); return; }
+    setExpanded(exId);
+    if (!execImages[exId]) {
+      try {
+        const imgs = await api.getExecutionImages(exId);
+        setExecImages((prev) => ({ ...prev, [exId]: imgs }));
+      } catch { setExecImages((prev) => ({ ...prev, [exId]: [] })); }
+    }
+  };
+
+  const handleCopy = async (text: string) => {
     await navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+    toast.success("Copied to clipboard");
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this execution record?")) return;
     await api.deleteExecution(id);
     await load();
+    toast.success("Entry deleted");
   };
 
   const inputStyle: React.CSSProperties = {
@@ -41,9 +97,12 @@ export default function HistoryPage() {
   };
 
   return (
-    <div style={{ maxWidth: 900 }}>
+    <div style={{ maxWidth: 960 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 700 }}>Execution History</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 700 }}>Prompt History</h2>
+          {onHelp && <HelpButton onClick={() => onHelp("history")} />}
+        </div>
         <select
           value={filterGroup ?? ""}
           onChange={(e) => setFilterGroup(e.target.value ? Number(e.target.value) : undefined)}
@@ -55,91 +114,173 @@ export default function HistoryPage() {
       </div>
 
       {executions.length === 0 ? (
-        <div style={{
-          padding: 40, textAlign: "center", color: "var(--text-muted)",
-          background: "var(--bg-card)", borderRadius: "var(--radius-lg)",
-        }}>
-          No executions recorded yet. Use a template and save the execution to see it here.
-        </div>
+        <EmptyState icon="~" title="No saved prompts" description="When you generate and save a prompt from a task, it will appear here." />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {executions.map((ex) => (
-            <div
-              key={ex.id}
-              style={{
-                background: "var(--bg-card)", borderRadius: "var(--radius-lg)",
-                border: "1px solid var(--border)", overflow: "hidden",
-              }}
-            >
-              <div
-                onClick={() => setExpanded(expanded === ex.id ? null : ex.id)}
-                style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  padding: "14px 20px", cursor: "pointer",
-                }}
-              >
-                <div>
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>{ex.template_name}</span>
-                  <span style={{
-                    fontSize: 12, color: "var(--accent)", background: "var(--accent-light)",
-                    padding: "2px 8px", borderRadius: 20, marginLeft: 10,
-                  }}>{ex.group_name}</span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                    {new Date(ex.created_at).toLocaleString()}
-                  </span>
-                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                    {expanded === ex.id ? "\u25B2" : "\u25BC"}
-                  </span>
-                </div>
-              </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {taskGroups.map((tg) => {
+            const key = tg.taskId ? String(tg.taskId) : "__ungrouped__";
+            const isCollapsed = collapsedTasks.has(key);
 
-              {expanded === ex.id && (
-                <div style={{ padding: "0 20px 16px", borderTop: "1px solid var(--border)" }}>
-                  {ex.notes && (
-                    <p style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 12, marginBottom: 8, fontStyle: "italic" }}>
-                      {ex.notes}
-                    </p>
-                  )}
+            return (
+              <div key={key}>
+                {/* Task header */}
+                <div
+                  onClick={() => toggleTaskCollapse(key)}
+                  style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    padding: "10px 16px", cursor: "pointer",
+                    background: "var(--bg-secondary)", borderRadius: "var(--radius)",
+                    border: "1px solid var(--border)", marginBottom: isCollapsed ? 0 : 8,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
+                      {tg.taskName}
+                    </span>
+                    <span style={{
+                      fontSize: 11, padding: "2px 8px", borderRadius: 20,
+                      background: "var(--accent-light)", color: "var(--accent)", fontWeight: 600,
+                    }}>
+                      {tg.executions.length} prompt{tg.executions.length !== 1 ? "s" : ""}
+                    </span>
+                    {tg.taskId && (
+                      <Link
+                        to={`/tasks/${tg.taskId}`}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ fontSize: 11, color: "var(--text-muted)", textDecoration: "none" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = "var(--accent)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-muted)")}
+                      >
+                        open task
+                      </Link>
+                    )}
+                  </div>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    {isCollapsed ? "\u25BC" : "\u25B2"}
+                  </span>
+                </div>
 
-                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8, marginBottom: 4 }}>Variables used:</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-                    {Object.entries(ex.variable_values).map(([k, v]) => (
-                      <span key={k} style={{
-                        fontSize: 11, padding: "3px 8px", background: "var(--bg-input)",
-                        borderRadius: 20, color: "var(--text-secondary)",
-                      }}>
-                        {k}: {String(v).substring(0, 50)}{String(v).length > 50 ? "..." : ""}
-                      </span>
+                {/* Executions under this task */}
+                {!isCollapsed && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingLeft: 12 }}>
+                    {tg.executions.map((ex) => (
+                      <div
+                        key={ex.id}
+                        style={{
+                          background: "var(--bg-card)", borderRadius: "var(--radius-lg)",
+                          border: "1px solid var(--border)", overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          onClick={() => handleExpand(ex.id)}
+                          style={{
+                            display: "flex", justifyContent: "space-between", alignItems: "center",
+                            padding: "12px 16px", cursor: "pointer",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontSize: 13, fontWeight: 600 }}>{ex.template_name}</span>
+                            <span style={{
+                              fontSize: 10, color: "var(--accent)", background: "var(--accent-light)",
+                              padding: "1px 6px", borderRadius: 12,
+                            }}>{ex.group_name}</span>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                              {new Date(ex.created_at).toLocaleString()}
+                            </span>
+                            <span style={{ fontSize: 10, color: "var(--text-muted)" }}>
+                              {expanded === ex.id ? "\u25B2" : "\u25BC"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {expanded === ex.id && (
+                          <div style={{ padding: "0 16px 14px", borderTop: "1px solid var(--border)" }}>
+                            {ex.notes && (
+                              <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 10, marginBottom: 6, fontStyle: "italic" }}>
+                                {ex.notes}
+                              </p>
+                            )}
+
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8, marginBottom: 4 }}>Variables:</div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 10 }}>
+                              {Object.entries(ex.variable_values).map(([k, v]) => (
+                                <span key={k} style={{
+                                  fontSize: 10, padding: "2px 6px", background: "var(--bg-input)",
+                                  borderRadius: 12, color: "var(--text-secondary)", fontFamily: "monospace",
+                                }}>
+                                  {k}: {String(v).substring(0, 40)}{String(v).length > 40 ? "..." : ""}
+                                </span>
+                              ))}
+                            </div>
+
+                            <pre style={{
+                              background: "var(--bg-input)", padding: 12, borderRadius: "var(--radius)",
+                              fontSize: 11, lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word",
+                              maxHeight: 250, overflowY: "auto", fontFamily: "monospace",
+                              color: "var(--text-primary)",
+                            }}>
+                              {ex.filled_prompt}
+                            </pre>
+
+                            {/* Images */}
+                            {execImages[ex.id] && execImages[ex.id].length > 0 && (
+                              <div style={{ marginTop: 10 }}>
+                                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Attached Images:</div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                  {execImages[ex.id].map((img, idx) => (
+                                    <div key={idx} style={{
+                                      display: "flex", alignItems: "center", gap: 10, padding: "6px 8px",
+                                      borderRadius: 4, border: "1px solid var(--border)", background: "var(--bg-primary)",
+                                    }}>
+                                      {img.url ? (
+                                        <img src={img.url} alt={img.original_name}
+                                          onClick={() => setFullImageUrl(img.url)}
+                                          style={{ width: 60, height: 45, objectFit: "cover", cursor: "pointer", borderRadius: 3, flexShrink: 0 }} />
+                                      ) : (
+                                        <div style={{ width: 60, height: 45, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 16, flexShrink: 0, background: "var(--bg-card)", borderRadius: 3 }}>{"\uD83D\uDDBC"}</div>
+                                      )}
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-primary)" }}>
+                                          {(img.file_path || img.original_name || "").split(/[/\\]/).pop()}
+                                        </div>
+                                        <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={img.file_path || ""}>
+                                          {img.file_path || ""}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                              <Button variant="primary" onClick={() => handleCopy(ex.filled_prompt)} style={{ fontSize: 11, padding: "4px 12px" }}>
+                                Copy Prompt
+                              </Button>
+                              <Button variant="destructive" confirm onClick={() => handleDelete(ex.id)} style={{ fontSize: 11, padding: "4px 12px" }}>
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
-
-                  <pre style={{
-                    background: "var(--bg-input)", padding: 14, borderRadius: "var(--radius)",
-                    fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word",
-                    maxHeight: 300, overflowY: "auto", fontFamily: "monospace",
-                    color: "var(--text-primary)",
-                  }}>
-                    {ex.filled_prompt}
-                  </pre>
-
-                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                    <button onClick={() => handleCopy(ex.filled_prompt, ex.id)} style={{
-                      padding: "5px 12px", background: "var(--accent)", color: "#fff",
-                      border: "none", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer",
-                    }}>
-                      {copiedId === ex.id ? "Copied!" : "Copy Prompt"}
-                    </button>
-                    <button onClick={() => handleDelete(ex.id)} style={{
-                      padding: "5px 12px", background: "transparent", color: "var(--danger)",
-                      border: "1px solid var(--danger)", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer",
-                    }}>Delete</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {/* Full image overlay */}
+      {fullImageUrl && (
+        <div onClick={() => setFullImageUrl(null)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 9999,
+          display: "flex", alignItems: "center", justifyContent: "center", cursor: "zoom-out",
+        }}>
+          <img src={fullImageUrl} alt="" style={{ maxWidth: "90vw", maxHeight: "90vh", borderRadius: 8, boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }} />
         </div>
       )}
     </div>

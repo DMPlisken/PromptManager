@@ -16,6 +16,7 @@ router = APIRouter()
 async def list_executions(
     group_id: int | None = None,
     template_id: int | None = None,
+    task_id: int | None = None,
     limit: int = 50,
     offset: int = 0,
     db: AsyncSession = Depends(get_db),
@@ -23,11 +24,14 @@ async def list_executions(
     query = select(TaskExecution).options(
         selectinload(TaskExecution.group),
         selectinload(TaskExecution.template),
+        selectinload(TaskExecution.task),
     )
     if group_id is not None:
         query = query.where(TaskExecution.group_id == group_id)
     if template_id is not None:
         query = query.where(TaskExecution.template_id == template_id)
+    if task_id is not None:
+        query = query.where(TaskExecution.task_id == task_id)
     query = query.order_by(TaskExecution.created_at.desc()).offset(offset).limit(limit)
     result = await db.execute(query)
     executions = result.scalars().all()
@@ -36,12 +40,14 @@ async def list_executions(
             id=e.id,
             group_id=e.group_id,
             template_id=e.template_id,
+            task_id=e.task_id,
             filled_prompt=e.filled_prompt,
             variable_values=e.variable_values,
             notes=e.notes,
             created_at=e.created_at,
             group_name=e.group.name if e.group else None,
             template_name=e.template.name if e.template else None,
+            task_name=e.task.name if e.task else None,
         )
         for e in executions
     ]
