@@ -88,7 +88,7 @@ app.include_router(images.router, prefix="/api/images", tags=["images"])
 app.include_router(tags.router, prefix="/api/tags", tags=["tags"])
 app.include_router(task_images.router, prefix="/api/task-images", tags=["task-images"])
 app.include_router(export_import.router, prefix="/api/groups", tags=["export-import"])
-app.include_router(sessions.router, tags=["sessions"])
+app.include_router(sessions.router, prefix="/api/sessions", tags=["sessions"])
 app.include_router(websocket.router)
 
 
