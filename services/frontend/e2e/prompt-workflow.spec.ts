@@ -4,7 +4,7 @@ test.describe('Full Prompt Workflow', () => {
   test('should navigate across all pages', async ({ page }) => {
     // 1. Load app
     await page.goto('/');
-    await expect(page.locator('text=PromptFlow')).toBeVisible();
+    await expect(page.locator('h1:has-text("PromptFlow")')).toBeVisible();
 
     // 2. Tasks page (default)
     await page.click('text=Tasks');
@@ -29,7 +29,7 @@ test.describe('Full Prompt Workflow', () => {
 
   test('should create a group via template library', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('text=PromptFlow')).toBeVisible();
+    await expect(page.locator('h1:has-text("PromptFlow")')).toBeVisible();
 
     // Expand Template Library
     await page.click('text=Template Library');

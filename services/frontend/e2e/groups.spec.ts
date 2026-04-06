@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Group Management', () => {
   test('should expand template library and create a new group', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('text=PromptFlow')).toBeVisible();
+    await expect(page.locator('h1:has-text("PromptFlow")')).toBeVisible();
 
     // Expand Template Library section
     await page.click('text=Template Library');
@@ -25,7 +25,7 @@ test.describe('Group Management', () => {
 
   test('should navigate to group page', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('text=PromptFlow')).toBeVisible();
+    await expect(page.locator('h1:has-text("PromptFlow")')).toBeVisible();
 
     // Expand Template Library
     await page.click('text=Template Library');

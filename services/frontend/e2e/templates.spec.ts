@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Template Management', () => {
   test('should navigate to a group page', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('text=PromptFlow')).toBeVisible();
+    await expect(page.locator('h1:has-text("PromptFlow")')).toBeVisible();
 
     // Expand Template Library
     await page.click('text=Template Library');
