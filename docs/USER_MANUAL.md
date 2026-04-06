@@ -1,7 +1,7 @@
 # PromptFlow — User Manual
 
-**Version:** 2.0
-**Last updated:** 2026-04-06
+**Version:** 2.1
+**Last updated:** 2026-04-07
 
 > **Note:** This manual is also available interactively inside the app. Click the **"Manual"** link in the sidebar or click any **"?"** button next to a section header for context-specific help. The interactive manual and this file are kept in sync — the source of truth is `src/data/helpContent.ts`.
 
@@ -22,7 +22,8 @@
 11. [Typical Workflows](#11-typical-workflows)
 12. [Docker Commands Reference](#12-docker-commands-reference)
 13. [Claude Code Sessions](#13-claude-code-sessions)
-14. [Multi-Machine Orchestration (Coming Soon)](#14-multi-machine-orchestration-coming-soon)
+14. [Multi-Machine Orchestration](#14-multi-machine-orchestration)
+15. [Troubleshooting](#15-troubleshooting)
 
 ---
 
@@ -436,6 +437,8 @@ Sessions continue running on the server even if your browser disconnects tempora
 
 Multi-machine orchestration lets you manage Claude Code CLI sessions across multiple computers (Mac, Windows, Linux) from one PromptFlow dashboard. Each workstation runs a lightweight **agent** that connects to the server.
 
+> **Note:** Machine cards display platform-specific emoji badges for instant recognition. Health metrics include CPU, memory (shown in human-readable format like "15.2 / 16.0 GB"), and disk space. Cards use a subtle gradient background with the machine's accent color and feature hover elevation effects.
+
 > **Visual Guide:** For a detailed interactive walkthrough with high-fidelity mockups, open `docs/machine-setup-guide.html` in your browser.
 
 ### Step-by-Step: Setting Up a New Client Machine
@@ -601,3 +604,89 @@ Here's the full end-to-end flow:
 6. **Approve tools**: When Claude wants to edit files or run commands, approve from the browser
 7. **Review**: See the completed session output with full message history
 8. **Repeat**: Use the same template with different variables for the next task
+
+---
+
+## 15. Troubleshooting
+
+### 15.1 Session creation fails with "Sidecar unreachable"
+
+**Symptom:** Creating a session shows an error about the sidecar being unreachable or circuit breaker open.
+
+**Cause:** The orchestrator sidecar is not running, or the `ORCHESTRATOR_URL` in `.env` is misconfigured.
+
+**Solution:**
+1. Start the sidecar: `cd services/orchestrator && ./run.sh`
+2. Verify it is running: `curl http://localhost:9100/health`
+3. Check `.env` has `ORCHESTRATOR_URL=http://host.docker.internal:9100`
+4. If using Docker, ensure the backend container can reach the host (check `extra_hosts` in `docker-compose.yml`)
+
+### 15.2 Machine shows offline after agent start
+
+**Symptom:** The agent starts successfully on the remote machine, but the Machines page still shows it as "offline".
+
+**Cause:** The agent cannot reach the server WebSocket endpoint, or the API key is invalid.
+
+**Solution:**
+1. Check the agent logs for connection errors
+2. Verify the server URL in the agent config (`promptflow-agent.yaml`)
+3. Ensure the server's WebSocket port is accessible from the remote machine (no firewall blocking)
+4. If the agent was re-paired, ensure it is using the new API key
+5. Check that the backend is running and the `/ws/agent` endpoint is accessible
+
+### 15.3 WebSocket connection drops repeatedly
+
+**Symptom:** The connection status indicator in the sidebar flashes between "connected" and "reconnecting".
+
+**Cause:** Network instability, proxy timeouts, or server restarts.
+
+**Solution:**
+1. Check your network connection
+2. If behind a reverse proxy (nginx), increase the WebSocket timeout: `proxy_read_timeout 300s;`
+3. Check backend logs for error messages
+4. The browser will automatically reconnect with exponential backoff (1s to 30s)
+5. Sessions continue running on the server during disconnections — no data is lost
+
+### 15.4 Pairing code expired before completing setup
+
+**Symptom:** The setup wizard shows "Invalid or expired pairing code" when the agent tries to pair.
+
+**Cause:** Pairing codes expire after 15 minutes.
+
+**Solution:**
+1. Close the wizard and start again — click "+ Add Machine" to generate a fresh code
+2. Stale pairing records are automatically cleaned up after 1 hour
+3. If the agent already ran the pairing command, wait for the new code and re-run it
+
+### 15.5 Session output shows "(no output received)"
+
+**Symptom:** A machine test or session completes successfully but the output area is empty.
+
+**Cause:** Claude's stream-json output may store the response in metadata rather than the content field.
+
+**Solution:**
+1. This was fixed in iteration 1 (BUG-002). Ensure you are running the latest backend code.
+2. If the issue persists, check the session messages in the database — the content may be in `metadata_json` rather than `content`.
+
+### 15.6 Docker container fails to start
+
+**Symptom:** `docker compose up` fails with port conflicts or build errors.
+
+**Cause:** Port already in use, or stale Docker cache.
+
+**Solution:**
+1. Check for port conflicts: `lsof -i :3003` (frontend), `lsof -i :8010` (backend), `lsof -i :5433` (database)
+2. Change ports in `.env` if needed
+3. Rebuild with no cache: `docker compose build --no-cache`
+4. Remove volumes and rebuild: `docker compose down -v && docker compose up -d --build`
+
+### 15.7 Database migration errors
+
+**Symptom:** Backend fails to start with "relation does not exist" or Alembic migration errors.
+
+**Cause:** Database schema is out of date or migrations were not applied.
+
+**Solution:**
+1. Run migrations: `docker compose exec backend alembic upgrade head`
+2. If migrations conflict, check `alembic/versions/` for the correct migration chain
+3. For a fresh start: `docker compose down -v && docker compose up -d --build` (WARNING: this deletes all data)

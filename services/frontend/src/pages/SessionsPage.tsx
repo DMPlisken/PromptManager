@@ -6,6 +6,7 @@ import {
   usePendingApprovals,
 } from "../stores/sessionStore";
 import { useWsContext } from "../providers/WebSocketContext";
+import { useToast } from "../components/Toast";
 import SessionTerminal from "../components/session/SessionTerminal";
 import SessionCreateModal from "../components/session/SessionCreateModal";
 import type { SessionStatus, SessionCreateRequest, ClaudeSession } from "../types/session";
@@ -62,6 +63,37 @@ const cardStyle: React.CSSProperties = {
   marginBottom: 16,
 };
 
+/* ---------- Helpers ---------- */
+
+function relativeTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  if (diff < 0) return "just now";
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function truncateDir(dir: string, maxLen = 40): string {
+  if (!dir || dir.length <= maxLen) return dir || "";
+  return "..." + dir.slice(dir.length - maxLen + 3);
+}
+
+const statusLabelColors: Record<SessionStatus, string> = {
+  starting: "var(--status-waiting)",
+  running: "var(--status-running)",
+  waiting_approval: "var(--status-waiting)",
+  completed: "var(--status-completed)",
+  failed: "var(--status-failed)",
+  terminated: "var(--status-terminated)",
+  disconnected: "var(--status-terminated)",
+};
+
 /* ---------- Filter type ---------- */
 
 type SessionFilter = "all" | "active" | "completed";
@@ -84,6 +116,8 @@ export default function SessionsPage() {
   const messages = useSessionMessages(activeSessionId);
   const pendingApprovals = usePendingApprovals(activeSessionId);
 
+  const toast = useToast();
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [followUpText, setFollowUpText] = useState("");
   const [filter, setFilter] = useState<SessionFilter>("all");
@@ -105,11 +139,12 @@ export default function SessionsPage() {
       try {
         await actions.createSession(request);
         setShowCreateModal(false);
+        toast.success("Session created", request.name || "New session started");
       } catch (e) {
-        alert("Failed to create session: " + e);
+        toast.error("Failed to create session", String(e));
       }
     },
-    [actions]
+    [actions, toast]
   );
 
   const handleSendFollowUp = useCallback(() => {
@@ -153,15 +188,30 @@ export default function SessionsPage() {
       if (!confirm("Remove this session?")) return;
       try {
         await actions.removeSession(sessionId);
+        toast.success("Session removed");
       } catch (e) {
-        alert("Failed to remove: " + e);
+        toast.error("Failed to remove session", String(e));
       }
     },
-    [actions]
+    [actions, toast]
   );
 
   const orderedSessions = sessionOrder.map((id) => sessions[id]).filter(Boolean);
   const filteredSidebar = orderedSessions.filter((s) => matchesFilter(s, filter));
+
+  // Group sidebar sessions by status category
+  const activeSidebar = filteredSidebar.filter((s) =>
+    ["starting", "running", "waiting_approval"].includes(s.status)
+  );
+  const completedSidebar = filteredSidebar.filter((s) => s.status === "completed");
+  const failedSidebar = filteredSidebar.filter((s) =>
+    ["failed", "terminated", "disconnected"].includes(s.status)
+  );
+  const sidebarGroups: { label: string; sessions: ClaudeSession[] }[] = [
+    ...(activeSidebar.length > 0 ? [{ label: "Active", sessions: activeSidebar }] : []),
+    ...(completedSidebar.length > 0 ? [{ label: "Completed", sessions: completedSidebar }] : []),
+    ...(failedSidebar.length > 0 ? [{ label: "Failed", sessions: failedSidebar }] : []),
+  ];
 
   const isSessionActive = activeSession && ["starting", "running", "waiting_approval"].includes(activeSession.status);
 
@@ -183,6 +233,7 @@ export default function SessionsPage() {
         >
           {orderedSessions.map((s) => {
             const isActive = activeSessionId === s.id;
+            const tabName = s.name || (s.id ? s.id.substring(0, 8) : "Session");
             return (
               <button
                 key={s.id}
@@ -203,10 +254,17 @@ export default function SessionsPage() {
                   whiteSpace: "nowrap",
                   flexShrink: 0,
                   transition: "all 0.15s ease",
+                  maxWidth: 200,
                 }}
               >
                 <span style={statusDot(s.status)} />
-                {s.name || (s.id ? s.id.substring(0, 8) : "Session")}
+                <span style={{
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}>
+                  {tabName}
+                </span>
               </button>
             );
           })}
@@ -237,25 +295,64 @@ export default function SessionsPage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                padding: "8px 16px",
+                padding: "10px 16px",
                 borderBottom: "1px solid var(--border)",
                 fontSize: 12,
                 color: "var(--text-muted)",
                 flexShrink: 0,
+                background: "var(--bg-secondary)",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                {/* Status badge */}
+                <span style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "3px 10px", borderRadius: 20,
+                  background: `color-mix(in srgb, ${statusLabelColors[activeSession.status]} 15%, transparent)`,
+                  color: statusLabelColors[activeSession.status],
+                  fontSize: 11, fontWeight: 600, textTransform: "capitalize",
+                }}>
                   <span style={statusDot(activeSession.status)} />
-                  {activeSession.status}
+                  {activeSession.status.replace("_", " ")}
                 </span>
-                <span>Model: {activeSession.model}</span>
-                <span>Dir: {activeSession.workingDirectory}</span>
+                {/* Model badge */}
+                <span style={{
+                  padding: "3px 10px", borderRadius: 20,
+                  background: "var(--accent-light)", color: "var(--accent)",
+                  fontSize: 11, fontWeight: 600,
+                }}>
+                  {activeSession.model}
+                </span>
+                {/* Working directory */}
+                <span style={{
+                  padding: "3px 10px", borderRadius: 20,
+                  background: "rgba(255,255,255,0.05)", color: "var(--text-muted)",
+                  fontSize: 11, fontFamily: "monospace",
+                }} title={activeSession.workingDirectory}>
+                  {truncateDir(activeSession.workingDirectory)}
+                </span>
+                {/* Cost */}
                 {activeSession.totalCostUsd > 0 && (
-                  <span>${activeSession.totalCostUsd.toFixed(4)}</span>
+                  <span style={{
+                    padding: "3px 10px", borderRadius: 20,
+                    background: "rgba(76, 175, 128, 0.1)", color: "var(--success)",
+                    fontSize: 11, fontWeight: 600,
+                  }}>
+                    ${activeSession.totalCostUsd.toFixed(4)}
+                  </span>
+                )}
+                {/* Token count */}
+                {(activeSession.tokenCountInput > 0 || activeSession.tokenCountOutput > 0) && (
+                  <span style={{
+                    padding: "3px 10px", borderRadius: 20,
+                    background: "rgba(255,255,255,0.05)", color: "var(--text-muted)",
+                    fontSize: 11,
+                  }}>
+                    {activeSession.tokenCountInput.toLocaleString()}in / {activeSession.tokenCountOutput.toLocaleString()}out
+                  </span>
                 )}
               </div>
-              <div style={{ display: "flex", gap: 6 }}>
+              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                 {isSessionActive && (
                   <button onClick={handleAbort} style={btnStyle("danger")}>Abort</button>
                 )}
@@ -430,85 +527,113 @@ export default function SessionsPage() {
               No sessions match filter.
             </div>
           ) : (
-            filteredSidebar.map((s) => {
-              const isActive = activeSessionId === s.id;
-              return (
-                <div
-                  key={s.id}
-                  onClick={() => actions.setActiveSession(s.id)}
-                  style={{
-                    padding: "10px 12px",
-                    borderRadius: "var(--radius-lg)",
-                    marginBottom: 6,
-                    cursor: "pointer",
-                    background: isActive ? "var(--accent-light)" : "var(--bg-card)",
-                    border: isActive ? "1px solid var(--accent)" : "1px solid var(--border)",
-                    transition: "all 0.15s ease",
-                    boxShadow: isActive ? "0 0 0 1px rgba(124, 92, 252, 0.1)" : "none",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <span style={statusDot(s.status)} />
-                    <span
-                      style={{
-                        fontSize: 13,
-                        fontWeight: isActive ? 600 : 500,
-                        color: isActive ? "var(--accent)" : "var(--text-primary)",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        flex: 1,
-                      }}
-                    >
-                      {s.name || (s.id ? s.id.substring(0, 12) : "Session")}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)", paddingLeft: 16, display: "flex", alignItems: "center", gap: 4 }}>
-                    <span style={{
-                      fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 12,
-                      background: `color-mix(in srgb, ${statusColors[s.status]} 15%, transparent)`,
-                      color: statusColors[s.status], textTransform: "capitalize",
-                    }}>{s.status.replace("_", " ")}</span>
-                    <span>{s.model}</span>
-                  </div>
-                  {(s.initialPrompt ?? "").length > 0 && (
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: "var(--text-muted)",
-                        paddingLeft: 16,
-                        marginTop: 4,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {(s.initialPrompt ?? "").substring(0, 60)}{(s.initialPrompt ?? "").length > 60 ? "..." : ""}
-                    </div>
-                  )}
-                  {/* Remove button */}
-                  {["completed", "failed", "terminated", "disconnected"].includes(s.status) && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleRemove(s.id); }}
-                      style={{
-                        marginTop: 6,
-                        marginLeft: 16,
-                        padding: "2px 8px",
-                        fontSize: 11,
-                        background: "transparent",
-                        border: "1px solid var(--border)",
-                        borderRadius: "var(--radius)",
-                        color: "var(--text-muted)",
-                        cursor: "pointer",
-                        transition: "all 0.15s ease",
-                      }}
-                    >
-                      Remove
-                    </button>
-                  )}
+            sidebarGroups.map((group) => (
+              <div key={group.label}>
+                <div style={{
+                  fontSize: 10, fontWeight: 700, color: "var(--text-muted)",
+                  textTransform: "uppercase", letterSpacing: "0.06em",
+                  padding: "8px 8px 4px", marginTop: 4,
+                }}>
+                  {group.label} ({group.sessions.length})
                 </div>
-              );
-            })
+                {group.sessions.map((s) => {
+                  const isSelected = activeSessionId === s.id;
+                  const timeAgo = relativeTime(s.startedAt);
+                  return (
+                    <div
+                      key={s.id}
+                      onClick={() => actions.setActiveSession(s.id)}
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: "var(--radius-lg)",
+                        marginBottom: 6,
+                        cursor: "pointer",
+                        background: isSelected ? "var(--accent-light)" : "var(--bg-card)",
+                        border: isSelected ? "1px solid var(--accent)" : "1px solid var(--border)",
+                        transition: "all 0.15s ease",
+                        boxShadow: isSelected ? "0 0 0 1px rgba(124, 92, 252, 0.1)" : "none",
+                      }}
+                    >
+                      {/* Top row: status dot + name + time */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                        <span style={statusDot(s.status)} />
+                        <span
+                          style={{
+                            fontSize: 13,
+                            fontWeight: isSelected ? 600 : 500,
+                            color: isSelected ? "var(--accent)" : "var(--text-primary)",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            flex: 1,
+                          }}
+                        >
+                          {s.name || (s.id ? s.id.substring(0, 12) : "Session")}
+                        </span>
+                        {timeAgo && (
+                          <span style={{ fontSize: 10, color: "var(--text-muted)", flexShrink: 0 }}>
+                            {timeAgo}
+                          </span>
+                        )}
+                      </div>
+                      {/* Second row: model badge + status */}
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", paddingLeft: 16, display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{
+                          fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 12,
+                          background: `color-mix(in srgb, ${statusColors[s.status]} 15%, transparent)`,
+                          color: statusColors[s.status], textTransform: "capitalize",
+                        }}>{s.status.replace("_", " ")}</span>
+                        <span style={{
+                          fontSize: 10, fontWeight: 500, padding: "1px 6px", borderRadius: 12,
+                          background: "var(--accent-light)", color: "var(--accent)",
+                        }}>{s.model}</span>
+                        {s.totalCostUsd > 0 && (
+                          <span style={{ fontSize: 10, color: "var(--text-muted)" }}>
+                            ${s.totalCostUsd.toFixed(3)}
+                          </span>
+                        )}
+                      </div>
+                      {/* Prompt preview */}
+                      {(s.initialPrompt ?? "").length > 0 && (
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "var(--text-muted)",
+                            paddingLeft: 16,
+                            marginTop: 4,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {(s.initialPrompt ?? "").substring(0, 60)}{(s.initialPrompt ?? "").length > 60 ? "..." : ""}
+                        </div>
+                      )}
+                      {/* Remove button */}
+                      {["completed", "failed", "terminated", "disconnected"].includes(s.status) && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleRemove(s.id); }}
+                          style={{
+                            marginTop: 6,
+                            marginLeft: 16,
+                            padding: "2px 8px",
+                            fontSize: 11,
+                            background: "transparent",
+                            border: "1px solid var(--border)",
+                            borderRadius: "var(--radius)",
+                            color: "var(--text-muted)",
+                            cursor: "pointer",
+                            transition: "all 0.15s ease",
+                          }}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))
           )}
         </div>
       </aside>

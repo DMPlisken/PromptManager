@@ -73,6 +73,8 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
           color: active ? "var(--accent)" : "var(--text-secondary)",
           fontSize: 14, textDecoration: "none", fontWeight: active ? 600 : 400,
           transition: "all 0.15s ease",
+          borderLeft: active ? "3px solid var(--accent)" : "3px solid transparent",
+          marginLeft: active ? 0 : 0,
         }}
         onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
         onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
@@ -111,6 +113,7 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
               fontSize: 14, textDecoration: "none",
               fontWeight: 600,
               border: location.pathname.startsWith("/tasks") ? "1px solid rgba(124, 92, 252, 0.25)" : "1px solid transparent",
+              borderLeft: location.pathname.startsWith("/tasks") ? "3px solid var(--accent)" : "3px solid transparent",
               transition: "all 0.15s ease",
             }}
             onMouseEnter={(e) => { if (!location.pathname.startsWith("/tasks")) e.currentTarget.style.background = "rgba(124, 92, 252, 0.08)"; }}
@@ -229,8 +232,8 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
           )}
         </nav>
 
-        {/* Footer */}
-        <div style={{ padding: "8px 8px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 1 }}>
+        {/* Footer — separated sections */}
+        <div style={{ padding: "8px 8px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 2 }}>
           <Link
             to="/sessions"
             style={{
@@ -240,6 +243,7 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
               color: location.pathname === "/sessions" ? "var(--accent)" : "var(--text-secondary)",
               fontSize: 14, textDecoration: "none", fontWeight: location.pathname === "/sessions" ? 600 : 400,
               transition: "all 0.15s ease",
+              borderLeft: location.pathname === "/sessions" ? "3px solid var(--accent)" : "3px solid transparent",
             }}
             onMouseEnter={(e) => { if (location.pathname !== "/sessions") e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
             onMouseLeave={(e) => { if (location.pathname !== "/sessions") e.currentTarget.style.background = "transparent"; }}
@@ -265,6 +269,7 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
               color: location.pathname === "/machines" ? "var(--accent)" : "var(--text-secondary)",
               fontSize: 14, textDecoration: "none", fontWeight: location.pathname === "/machines" ? 600 : 400,
               transition: "all 0.15s ease",
+              borderLeft: location.pathname === "/machines" ? "3px solid var(--accent)" : "3px solid transparent",
             }}
             onMouseEnter={(e) => { if (location.pathname !== "/machines") e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
             onMouseLeave={(e) => { if (location.pathname !== "/machines") e.currentTarget.style.background = "transparent"; }}
@@ -281,6 +286,7 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
               </span>
             )}
           </Link>
+          <div style={{ height: 1, background: "var(--border)", margin: "4px 8px", opacity: 0.5 }} />
           {navLink("/history", "History")}
           {navLink("/manual", "Manual")}
           {onHelp && (
@@ -302,7 +308,7 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
       </aside>
 
       {/* Main */}
-      <main style={{ flex: 1, overflowY: "auto", padding: 24 }}>
+      <main style={{ flex: 1, overflowY: "auto", padding: 24 }} key={location.pathname}>
         <ErrorBoundary>
           {children}
         </ErrorBoundary>

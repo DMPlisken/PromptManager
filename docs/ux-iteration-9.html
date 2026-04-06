@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PromptFlow UX — Iteration 9 Report</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #1a1b2e; --card: #232440; --card-raised: #282a4d;
+  --accent: #7c5cfc; --accent-hover: #9478ff; --accent-dim: rgba(124,92,252,0.12);
+  --text: #e8e8f0; --text-dim: #a0a0b8; --text-muted: #6a6a88; --border: #3a3b5a;
+  --green: #4ade80; --green-dim: rgba(74,222,128,0.12);
+  --yellow: #fbbf24; --yellow-dim: rgba(251,191,36,0.12);
+  --red: #f87171; --blue: #60a5fa; --blue-dim: rgba(96,165,250,0.12);
+  --mono: 'Menlo','Consolas','Courier New',monospace;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.6; }
+::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.container { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+h2 { font-size: 20px; font-weight: 600; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+h3 { font-size: 16px; font-weight: 600; margin: 20px 0 10px; color: var(--accent); }
+.subtitle { color: var(--text-dim); margin-bottom: 24px; }
+.badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.badge-green { background: var(--green-dim); color: var(--green); }
+.badge-blue { background: var(--blue-dim); color: var(--blue); }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+.progress-bar { display: flex; gap: 4px; margin-bottom: 32px; }
+.progress-step { flex: 1; height: 6px; border-radius: 3px; background: var(--border); }
+.progress-step.done { background: var(--green); }
+.progress-step.current { background: var(--accent); }
+ul { margin-left: 20px; margin-bottom: 12px; }
+li { margin-bottom: 6px; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+th { color: var(--text-dim); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+.file-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-family: var(--mono); background: var(--accent-dim); color: var(--accent); margin: 2px 4px 2px 0; }
+.nav-links { display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border); }
+.nav-links a { color: var(--accent); text-decoration: none; }
+.nav-links a:hover { color: var(--accent-hover); }
+code { font-family: var(--mono); font-size: 13px; background: var(--card-raised); padding: 1px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>UX Iteration 9 — Documentation: User Manual Update</h1>
+<p class="subtitle">Focus: USER_MANUAL.md updated to reflect all UI changes, troubleshooting section added</p>
+
+<div class="progress-bar">
+  <div class="progress-step done"></div><div class="progress-step done"></div><div class="progress-step done"></div>
+  <div class="progress-step done"></div><div class="progress-step done"></div><div class="progress-step done"></div>
+  <div class="progress-step done"></div><div class="progress-step done"></div>
+  <div class="progress-step current"></div>
+  <div class="progress-step"></div>
+</div>
+
+<div class="card">
+  <h3>Theme</h3>
+  <p>Iteration 9 focused on <strong>documentation</strong>. All the UX improvements from iterations 1-8 needed to be reflected in the user manual. Additionally, a new <strong>Troubleshooting</strong> section was added based on the error scenarios addressed in iteration 7.</p>
+</div>
+
+<h2>Changes Made</h2>
+
+<div class="card">
+  <h3>USER_MANUAL.md Updates</h3>
+  <span class="file-tag">docs/USER_MANUAL.md</span>
+  <ul>
+    <li>Updated last-updated date to 2026-04-07</li>
+    <li>Added "Troubleshooting" section (Section 15) with common issues and solutions</li>
+    <li>Updated Section 13 (Claude Code Sessions) to reflect tab bar redesign, session card improvements, and empty state behavior</li>
+    <li>Updated Section 14 (Multi-Machine Orchestration) to describe platform badge icons, health metric display, and stale pairing cleanup behavior</li>
+    <li>Added Table of Contents entry for the new Troubleshooting section</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h3>Troubleshooting Section Contents</h3>
+  <p>The new section covers these common scenarios:</p>
+  <table>
+    <tr><th>Issue</th><th>Section</th></tr>
+    <tr><td>Session creation fails with "Sidecar unreachable"</td><td>15.1</td></tr>
+    <tr><td>Machine shows offline after agent start</td><td>15.2</td></tr>
+    <tr><td>WebSocket connection drops repeatedly</td><td>15.3</td></tr>
+    <tr><td>Pairing code expired before completing setup</td><td>15.4</td></tr>
+    <tr><td>Session output shows "(no output received)"</td><td>15.5</td></tr>
+    <tr><td>Docker container fails to start</td><td>15.6</td></tr>
+    <tr><td>Database migration errors</td><td>15.7</td></tr>
+  </table>
+</div>
+
+<h2>Test Results</h2>
+
+<div class="card">
+  <table>
+    <tr><th>Test Suite</th><th>Tests</th><th>Status</th></tr>
+    <tr><td>Navigation</td><td>3/3</td><td><span class="badge badge-green">PASS</span></td></tr>
+    <tr><td>Groups CRUD</td><td>3/3</td><td><span class="badge badge-green">PASS</span></td></tr>
+    <tr><td>Templates</td><td>3/3</td><td><span class="badge badge-green">PASS</span></td></tr>
+    <tr><td>Sessions</td><td>3/3</td><td><span class="badge badge-green">PASS</span></td></tr>
+    <tr><td>Prompt Workflow</td><td>3/3</td><td><span class="badge badge-green">PASS</span></td></tr>
+    <tr><th colspan="2">Total</th><td><strong>15/15</strong> <span class="badge badge-green">ALL PASS</span></td></tr>
+  </table>
+  <p style="margin-top: 8px; color: var(--text-dim);">No code changes in this iteration — documentation only.</p>
+</div>
+
+<h2>UX Expert Feedback</h2>
+
+<div class="card">
+  <p><strong>Positive:</strong> The troubleshooting section addresses real issues users will encounter. Each entry provides the symptom, cause, and solution — exactly what frustrated users need. The manual is comprehensive without being overwhelming.</p>
+  <p style="margin-top: 12px;"><strong>Suggestions for next iteration:</strong></p>
+  <ul>
+    <li>Update ROADMAP_PROGRESS.md to track all iteration work as completed</li>
+    <li>Create a comprehensive summary report covering all 10 iterations</li>
+  </ul>
+</div>
+
+<div class="nav-links">
+  <a href="ux-iteration-8.html">&larr; Iteration 8</a>
+  <a href="ux-iteration-10.html">Iteration 10 &rarr;</a>
+</div>
+
+</div>
+</body>
+</html>

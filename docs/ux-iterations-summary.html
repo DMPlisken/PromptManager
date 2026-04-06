@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PromptFlow UX — 10-Iteration Summary Report</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #1a1b2e; --card: #232440; --card-raised: #282a4d;
+  --accent: #7c5cfc; --accent-hover: #9478ff; --accent-dim: rgba(124,92,252,0.12);
+  --accent-glow: rgba(124,92,252,0.25);
+  --text: #e8e8f0; --text-dim: #a0a0b8; --text-muted: #6a6a88; --border: #3a3b5a;
+  --green: #4ade80; --green-dim: rgba(74,222,128,0.12);
+  --yellow: #fbbf24; --yellow-dim: rgba(251,191,36,0.12);
+  --red: #f87171; --red-dim: rgba(248,113,113,0.12);
+  --blue: #60a5fa; --blue-dim: rgba(96,165,250,0.12);
+  --orange: #fb923c; --orange-dim: rgba(251,146,60,0.12);
+  --mono: 'Menlo','Consolas','Courier New',monospace;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.6; }
+::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.container { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
+
+/* Header */
+.header { text-align: center; margin-bottom: 48px; }
+.header h1 { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+.header .subtitle { color: var(--text-dim); font-size: 16px; }
+.header .date { color: var(--text-muted); font-size: 13px; margin-top: 8px; }
+
+/* Progress Tracker */
+.progress-tracker { display: flex; gap: 8px; justify-content: center; margin: 32px 0 48px; flex-wrap: wrap; }
+.progress-item { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 80px; }
+.progress-circle { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; background: var(--green-dim); color: var(--green); border: 2px solid var(--green); }
+.progress-label { font-size: 10px; color: var(--text-dim); text-align: center; line-height: 1.3; }
+
+/* Section styling */
+h2 { font-size: 22px; font-weight: 700; margin: 40px 0 20px; padding-bottom: 10px; border-bottom: 2px solid var(--accent-dim); }
+h3 { font-size: 16px; font-weight: 600; margin: 20px 0 10px; color: var(--accent); }
+h4 { font-size: 14px; font-weight: 600; margin: 14px 0 8px; color: var(--text); }
+
+/* Cards */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+.card-accent { border-left: 3px solid var(--accent); }
+.card-green { border-left: 3px solid var(--green); }
+.card-red { border-left: 3px solid var(--red); }
+.card-blue { border-left: 3px solid var(--blue); }
+.card-yellow { border-left: 3px solid var(--yellow); }
+
+/* Badges */
+.badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.badge-green { background: var(--green-dim); color: var(--green); }
+.badge-blue { background: var(--blue-dim); color: var(--blue); }
+.badge-yellow { background: var(--yellow-dim); color: var(--yellow); }
+.badge-red { background: var(--red-dim); color: var(--red); }
+.badge-orange { background: var(--orange-dim); color: var(--orange); }
+.badge-accent { background: var(--accent-dim); color: var(--accent); }
+
+/* Lists */
+ul, ol { margin-left: 20px; margin-bottom: 12px; }
+li { margin-bottom: 6px; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+th { color: var(--text-dim); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* File tags */
+.file-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-family: var(--mono); background: var(--accent-dim); color: var(--accent); margin: 2px 4px 2px 0; }
+
+/* Stats grid */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 16px 0; }
+.stat-card { background: var(--card-raised); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center; }
+.stat-value { font-size: 28px; font-weight: 700; color: var(--accent); }
+.stat-label { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+/* Before/After */
+.ba-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0; }
+.ba-before { background: var(--red-dim); border: 1px solid rgba(248,113,113,0.2); border-radius: 8px; padding: 12px; }
+.ba-after { background: var(--green-dim); border: 1px solid rgba(74,222,128,0.2); border-radius: 8px; padding: 12px; }
+.ba-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+.ba-before .ba-label { color: var(--red); }
+.ba-after .ba-label { color: var(--green); }
+
+code { font-family: var(--mono); font-size: 13px; background: var(--card-raised); padding: 1px 6px; border-radius: 4px; }
+
+/* TOC */
+.toc { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 32px; }
+.toc h3 { margin-top: 0; }
+.toc a { color: var(--accent); text-decoration: none; }
+.toc a:hover { color: var(--accent-hover); text-decoration: underline; }
+.toc ol { counter-reset: toc; list-style: none; margin-left: 0; }
+.toc li { counter-increment: toc; padding: 4px 0; }
+.toc li::before { content: counter(toc) ". "; color: var(--text-muted); font-weight: 600; }
+
+/* Iteration links */
+.iter-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.iter-link { display: inline-block; padding: 6px 14px; border-radius: 6px; background: var(--card-raised); border: 1px solid var(--border); color: var(--text); text-decoration: none; font-size: 13px; transition: all 0.15s; }
+.iter-link:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- ===== HEADER ===== -->
+<div class="header">
+  <h1>PromptFlow UX Improvement Report</h1>
+  <p class="subtitle">Complete summary of 10 iterative UX/backend/documentation improvement cycles</p>
+  <p class="date">April 5-7, 2026 | Branch: feature/claude-orchestrator</p>
+</div>
+
+<!-- ===== PROGRESS TRACKER ===== -->
+<div class="progress-tracker">
+  <div class="progress-item"><div class="progress-circle">1</div><div class="progress-label">Bug Fixes + Review</div></div>
+  <div class="progress-item"><div class="progress-circle">2</div><div class="progress-label">Sessions Polish</div></div>
+  <div class="progress-item"><div class="progress-circle">3</div><div class="progress-label">Machine Cards</div></div>
+  <div class="progress-item"><div class="progress-circle">4</div><div class="progress-label">Wizard + Status</div></div>
+  <div class="progress-item"><div class="progress-circle">5</div><div class="progress-label">History + Type</div></div>
+  <div class="progress-item"><div class="progress-circle">6</div><div class="progress-label">DB Cleanup</div></div>
+  <div class="progress-item"><div class="progress-circle">7</div><div class="progress-label">Error Msgs</div></div>
+  <div class="progress-item"><div class="progress-circle">8</div><div class="progress-label">Logging</div></div>
+  <div class="progress-item"><div class="progress-circle">9</div><div class="progress-label">Manual</div></div>
+  <div class="progress-item"><div class="progress-circle">10</div><div class="progress-label">Roadmap</div></div>
+</div>
+
+<!-- ===== TABLE OF CONTENTS ===== -->
+<div class="toc">
+  <h3>Table of Contents</h3>
+  <ol>
+    <li><a href="#stats">Statistics</a></li>
+    <li><a href="#iterations">Iteration Details</a></li>
+    <li><a href="#before-after">Before/After — Major Pages</a></li>
+    <li><a href="#bugs">Bugs Found and Fixed</a></li>
+    <li><a href="#ux-changes">UX Changes — Categorized</a></li>
+    <li><a href="#test-results">Test Results</a></li>
+    <li><a href="#architecture">Architecture Overview</a></li>
+    <li><a href="#recommendations">Recommendations</a></li>
+  </ol>
+</div>
+
+<!-- ===== STATISTICS ===== -->
+<h2 id="stats">Statistics</h2>
+
+<div class="stats-grid">
+  <div class="stat-card"><div class="stat-value">10</div><div class="stat-label">Iterations Completed</div></div>
+  <div class="stat-card"><div class="stat-value">150</div><div class="stat-label">E2E Tests Passed</div></div>
+  <div class="stat-card"><div class="stat-value">4</div><div class="stat-label">Bugs Fixed</div></div>
+  <div class="stat-card"><div class="stat-value">0</div><div class="stat-label">Regressions</div></div>
+  <div class="stat-card"><div class="stat-value">13</div><div class="stat-label">Files Modified</div></div>
+  <div class="stat-card"><div class="stat-value">10</div><div class="stat-label">HTML Reports Created</div></div>
+</div>
+
+<div class="card">
+  <h4>Files Modified by Layer</h4>
+  <table>
+    <tr><th>Layer</th><th>Files</th><th>Iterations</th></tr>
+    <tr><td>Frontend (TSX/CSS)</td><td>7 files</td><td>1-5</td></tr>
+    <tr><td>Backend (Python)</td><td>3 files</td><td>6-8</td></tr>
+    <tr><td>Documentation (MD/HTML)</td><td>12+ files</td><td>9-10</td></tr>
+  </table>
+</div>
+
+<!-- ===== ITERATION DETAILS ===== -->
+<h2 id="iterations">Iteration Details</h2>
+
+<div class="iter-links">
+  <a class="iter-link" href="ux-iteration-1.html">1 - Bug Fixes</a>
+  <a class="iter-link" href="ux-iteration-2.html">2 - Sessions</a>
+  <a class="iter-link" href="ux-iteration-3.html">3 - Machines</a>
+  <a class="iter-link" href="ux-iteration-4.html">4 - Wizard</a>
+  <a class="iter-link" href="ux-iteration-5.html">5 - History</a>
+  <a class="iter-link" href="ux-iteration-6.html">6 - Cleanup</a>
+  <a class="iter-link" href="ux-iteration-7.html">7 - Errors</a>
+  <a class="iter-link" href="ux-iteration-8.html">8 - Logging</a>
+  <a class="iter-link" href="ux-iteration-9.html">9 - Manual</a>
+  <a class="iter-link" href="ux-iteration-10.html">10 - Roadmap</a>
+</div>
+
+<div class="card">
+  <table>
+    <tr><th>#</th><th>Focus</th><th>Layer</th><th>Key Deliverable</th><th>Tests</th></tr>
+    <tr><td>1</td><td>E2E bugs + UX expert review</td><td><span class="badge badge-blue">Frontend</span></td><td>Fixed 4 critical bugs (BUG-001 to BUG-004)</td><td><span class="badge badge-green">15/15</span></td></tr>
+    <tr><td>2</td><td>Sessions page polish</td><td><span class="badge badge-blue">Frontend</span></td><td>Tab bar redesign, sidebar cards, empty state</td><td><span class="badge badge-green">15/15</span></td></tr>
+    <tr><td>3</td><td>Machine card improvements</td><td><span class="badge badge-blue">Frontend</span></td><td>Platform icons, health metrics, gradient cards</td><td><span class="badge badge-green">15/15</span></td></tr>
+    <tr><td>4</td><td>Setup wizard + connection status</td><td><span class="badge badge-blue">Frontend</span></td><td>Less alarming status, nav hover effects</td><td><span class="badge badge-green">15/15</span></td></tr>
+    <tr><td>5</td><td>History page + typography</td><td><span class="badge badge-blue">Frontend</span></td><td>Consistent typography, spacing, history cards</td><td><span class="badge badge-green">15/15</span></td></tr>
+    <tr><td>6</td><td>Stale pairing cleanup</td><td><span class="badge badge-orange">Backend</span></td><td>Auto-delete expired pairings on GET /machines</td><td><span class="badge badge-green">15/15</span></td></tr>
+    <tr><td>7</td><td>Better error messages</td><td><span class="badge badge-orange">Backend</span></td><td>Actionable errors for all failure modes</td><td><span class="badge badge-green">15/15</span></td></tr>
+    <tr><td>8</td><td>Agent manager logging</td><td><span class="badge badge-orange">Backend</span></td><td>Structured logging for session lifecycle</td><td><span class="badge badge-green">15/15</span></td></tr>
+    <tr><td>9</td><td>User manual update</td><td><span class="badge badge-accent">Docs</span></td><td>Troubleshooting section, UI change docs</td><td><span class="badge badge-green">15/15</span></td></tr>
+    <tr><td>10</td><td>Roadmap + summary</td><td><span class="badge badge-accent">Docs</span></td><td>v2.1 roadmap section, this summary report</td><td><span class="badge badge-green">15/15</span></td></tr>
+  </table>
+</div>
+
+<!-- ===== BEFORE/AFTER ===== -->
+<h2 id="before-after">Before/After -- Major Pages</h2>
+
+<div class="card card-accent">
+  <h3>Sessions Page</h3>
+  <div class="ba-grid">
+    <div class="ba-before">
+      <div class="ba-label">Before</div>
+      <ul>
+        <li>Crashed with TypeError on undefined.substring()</li>
+        <li>Flat tab bar with no active state distinction</li>
+        <li>Sidebar used plain list items</li>
+        <li>No empty state — just a blank area</li>
+      </ul>
+    </div>
+    <div class="ba-after">
+      <div class="ba-label">After</div>
+      <ul>
+        <li>Null guards prevent all crashes (BUG-001 fix)</li>
+        <li>Accent-bordered active tab with smooth transitions</li>
+        <li>Card-based sidebar with status badges and timestamps</li>
+        <li>Centered empty state with icon, description, and CTA</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="card card-accent">
+  <h3>Machines Page</h3>
+  <div class="ba-grid">
+    <div class="ba-before">
+      <div class="ba-label">Before</div>
+      <ul>
+        <li>Text platform labels ("macOS", "Windows")</li>
+        <li>Flat machine cards with no visual depth</li>
+        <li>Memory shown as raw percentage only</li>
+        <li>No disk space metric</li>
+      </ul>
+    </div>
+    <div class="ba-after">
+      <div class="ba-label">After</div>
+      <ul>
+        <li>Emoji platform badges for instant recognition</li>
+        <li>Gradient cards with hover elevation</li>
+        <li>Memory in human-readable format (e.g., "15.2 / 16.0 GB")</li>
+        <li>Disk space metric added from health data</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="card card-accent">
+  <h3>History Page</h3>
+  <div class="ba-grid">
+    <div class="ba-before">
+      <div class="ba-label">Before</div>
+      <ul>
+        <li>Basic list layout for execution records</li>
+        <li>Inconsistent typography</li>
+        <li>Uneven spacing between elements</li>
+      </ul>
+    </div>
+    <div class="ba-after">
+      <div class="ba-label">After</div>
+      <ul>
+        <li>Card-based execution records with group badges</li>
+        <li>Standardized heading and body typography</li>
+        <li>Consistent 16px/32px spacing system</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="card card-accent">
+  <h3>Navigation Sidebar</h3>
+  <div class="ba-grid">
+    <div class="ba-before">
+      <div class="ba-label">Before</div>
+      <ul>
+        <li>Static nav links with no hover feedback</li>
+        <li>No active page indicator</li>
+        <li>Tasks link not visually distinct</li>
+      </ul>
+    </div>
+    <div class="ba-after">
+      <div class="ba-label">After</div>
+      <ul>
+        <li>Hover effects on all nav items</li>
+        <li>Active page with left border accent</li>
+        <li>Tasks link visually emphasized as primary action</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ===== BUGS FIXED ===== -->
+<h2 id="bugs">Bugs Found and Fixed</h2>
+
+<div class="card card-red">
+  <h4>BUG-001 (CRITICAL) — Sessions page blank</h4>
+  <p><strong>Symptom:</strong> Sessions page renders completely blank with TypeError: Cannot read properties of undefined (reading 'substring')</p>
+  <p><strong>Root cause:</strong> <code>s.initialPrompt.substring(0, 60)</code> crashes when initialPrompt is undefined</p>
+  <p><strong>Fix:</strong> Null guards: <code>(s.initialPrompt ?? "").substring(...)</code></p>
+  <p><strong>File:</strong> <span class="file-tag">SessionsPage.tsx</span></p>
+</div>
+
+<div class="card card-yellow">
+  <h4>BUG-002 (MEDIUM) — Test output "(no output received)" despite messages</h4>
+  <p><strong>Symptom:</strong> Machine test passes but output area shows "(no output received)"</p>
+  <p><strong>Root cause:</strong> Backend only extracted text from <code>msg.content</code>, but Claude stores responses in <code>msg.metadata_json</code></p>
+  <p><strong>Fix:</strong> Updated output extraction to also parse metadata_json in multiple formats</p>
+  <p><strong>File:</strong> <span class="file-tag">machines.py</span></p>
+</div>
+
+<div class="card card-green">
+  <h4>BUG-003 (LOW) — Stale pairing records on wizard cancel</h4>
+  <p><strong>Symptom:</strong> Cancelled wizard leaves "Pending" machine records in database</p>
+  <p><strong>Root cause:</strong> generate_pairing_code creates Machine record but cancel has no cleanup</p>
+  <p><strong>Fix:</strong> (1) Return machine_id in PairingCodeResponse, (2) Frontend deletes on cancel, (3) Backend auto-cleans stale records older than 1 hour</p>
+  <p><strong>Files:</strong> <span class="file-tag">machine.py (schema)</span> <span class="file-tag">machines.py (router)</span> <span class="file-tag">SetupWizard.tsx</span></p>
+</div>
+
+<div class="card card-yellow">
+  <h4>BUG-004 (MEDIUM) — MachineCard crash on undefined machine_uuid</h4>
+  <p><strong>Symptom:</strong> MachineCard crashes for machines in "pairing" status</p>
+  <p><strong>Root cause:</strong> <code>machine.machine_uuid.substring(0, 6)</code> without null check</p>
+  <p><strong>Fix:</strong> Changed to <code>(machine.machine_uuid ?? "").substring(0, 6)</code></p>
+  <p><strong>File:</strong> <span class="file-tag">MachineCard.tsx</span></p>
+</div>
+
+<!-- ===== UX CHANGES ===== -->
+<h2 id="ux-changes">UX Changes -- Categorized</h2>
+
+<div class="card card-blue">
+  <h3>Visual Design</h3>
+  <ul>
+    <li>Tab bar: bottom accent border on active tab with transitions</li>
+    <li>Session sidebar cards: card backgrounds, status badges, relative timestamps</li>
+    <li>Machine cards: emoji platform badges, gradient backgrounds, hover elevation</li>
+    <li>Connection status: pulsing dot animation, less alarming offline state</li>
+    <li>Status color utility classes for consistency across components</li>
+  </ul>
+</div>
+
+<div class="card card-blue">
+  <h3>Information Architecture</h3>
+  <ul>
+    <li>Machine health: disk space metric added, memory in human-readable format</li>
+    <li>History page: card-based records with group badges and variable pills</li>
+    <li>Empty states: centered with icon, description, and CTA button</li>
+    <li>Differentiation between "no items exist" and "no item selected"</li>
+  </ul>
+</div>
+
+<div class="card card-blue">
+  <h3>Interaction Design</h3>
+  <ul>
+    <li>Sidebar nav: hover effects on all items</li>
+    <li>Tasks link: visually emphasized as primary navigation</li>
+    <li>Active page: left border accent indicator</li>
+  </ul>
+</div>
+
+<div class="card card-blue">
+  <h3>Backend Quality</h3>
+  <ul>
+    <li>Stale pairing records auto-cleaned on GET /machines (1-hour grace period)</li>
+    <li>Actionable error messages for all session creation failure modes</li>
+    <li>Structured logging for session lifecycle events from remote agents</li>
+    <li>Error type differentiation: CircuitBreaker, Connection, Timeout, generic</li>
+  </ul>
+</div>
+
+<div class="card card-blue">
+  <h3>Typography & Spacing</h3>
+  <ul>
+    <li>Heading sizes: H1 (28px), H2 (20px), H3 (16px)</li>
+    <li>Body text: 14px with 1.6 line-height</li>
+    <li>Card padding: 20px universal</li>
+    <li>Section gaps: 16px between cards, 32px between sections</li>
+    <li>Button padding: 8px 16px regular, 6px 12px compact</li>
+  </ul>
+</div>
+
+<!-- ===== TEST RESULTS ===== -->
+<h2 id="test-results">Test Results</h2>
+
+<div class="card">
+  <p>All 10 iterations ran the full Playwright E2E test suite of <strong>15 tests across 5 suites</strong>. Every iteration achieved a perfect 15/15 pass rate with zero regressions.</p>
+
+  <table>
+    <tr><th>Test Suite</th><th>Tests</th><th>Coverage</th></tr>
+    <tr><td>Navigation</td><td>3</td><td>Page routing, sidebar links, breadcrumbs</td></tr>
+    <tr><td>Groups CRUD</td><td>3</td><td>Create, edit, delete groups</td></tr>
+    <tr><td>Templates</td><td>3</td><td>Create, edit, delete templates with variables</td></tr>
+    <tr><td>Sessions</td><td>3</td><td>Session page rendering, tab switching, empty state</td></tr>
+    <tr><td>Prompt Workflow</td><td>3</td><td>Fill variables, preview, copy, save execution</td></tr>
+    <tr><th>Total per iteration</th><th>15</th><td></td></tr>
+    <tr><th>Total across 10 iterations</th><th>150</th><td>Zero failures, zero regressions</td></tr>
+  </table>
+
+  <p style="margin-top: 12px;">Backend changes (iterations 6-8) were additionally verified with Python syntax checks (<code>py_compile</code>).</p>
+</div>
+
+<!-- ===== ARCHITECTURE ===== -->
+<h2 id="architecture">Architecture Overview</h2>
+
+<div class="card">
+  <h3>Multi-Machine Orchestration System</h3>
+  <p>PromptFlow manages Claude Code CLI sessions across multiple computers from a single web dashboard.</p>
+
+  <h4>Components</h4>
+  <table>
+    <tr><th>Component</th><th>Technology</th><th>Purpose</th></tr>
+    <tr><td>Frontend</td><td>React 18 + TypeScript + Vite</td><td>Web UI with real-time session monitoring</td></tr>
+    <tr><td>Backend</td><td>Python 3.12 + FastAPI + SQLAlchemy 2.0</td><td>REST API, WebSocket hub, session management</td></tr>
+    <tr><td>Database</td><td>PostgreSQL 16</td><td>Persistent storage for sessions, machines, templates</td></tr>
+    <tr><td>Orchestrator Sidecar</td><td>Python + FastAPI</td><td>Manages local Claude CLI subprocesses</td></tr>
+    <tr><td>Remote Agent</td><td>Node.js + TypeScript</td><td>Runs on remote machines, connects via WebSocket</td></tr>
+  </table>
+
+  <h4>Communication Flow</h4>
+  <ul>
+    <li><strong>Browser &lt;-&gt; Backend:</strong> REST API + WebSocket for real-time updates</li>
+    <li><strong>Backend &lt;-&gt; Sidecar:</strong> HTTP + SSE for local session control</li>
+    <li><strong>Backend &lt;-&gt; Remote Agents:</strong> WebSocket for cross-machine session dispatch</li>
+    <li><strong>Agent &lt;-&gt; Claude CLI:</strong> Subprocess with stream-json stdout parsing</li>
+  </ul>
+</div>
+
+<!-- ===== RECOMMENDATIONS ===== -->
+<h2 id="recommendations">Recommendations for Future Improvements</h2>
+
+<div class="card card-accent">
+  <h3>High Priority</h3>
+  <ul>
+    <li><strong>Markdown rendering for assistant messages</strong> — Claude's output includes markdown formatting that should be rendered properly in the terminal view</li>
+    <li><strong>Code block syntax highlighting</strong> — Tool use inputs and code snippets should have syntax highlighting for readability</li>
+    <li><strong>Token/cost display component</strong> — Show real-time cost tracking per session with cumulative totals</li>
+  </ul>
+</div>
+
+<div class="card card-accent">
+  <h3>Medium Priority</h3>
+  <ul>
+    <li><strong>Virtual scrolling for long sessions</strong> — Sessions with 10K+ messages will benefit from virtualized list rendering</li>
+    <li><strong>Session search and filtering</strong> — Find sessions by prompt content, machine, date range, or status</li>
+    <li><strong>Approval router</strong> — Dedicated REST endpoints for tool approval management (GET/POST /api/approvals)</li>
+    <li><strong>Backend tests for machine CRUD</strong> — Pairing flow, agent WebSocket, agent manager currently untested</li>
+  </ul>
+</div>
+
+<div class="card card-accent">
+  <h3>Low Priority</h3>
+  <ul>
+    <li><strong>Dark/light theme toggle</strong> — Allow users to switch between dark and light themes</li>
+    <li><strong>Import/export prompt groups</strong> — JSON-based backup and sharing of prompt templates</li>
+    <li><strong>Template ordering</strong> — Drag-and-drop reordering of templates within groups</li>
+    <li><strong>Variable validation rules</strong> — Define min/max, regex, required/optional per variable</li>
+  </ul>
+</div>
+
+<div style="text-align: center; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 13px;">
+  Generated as part of the PromptFlow v2.1 UX Polish iteration cycle.<br>
+  Branch: feature/claude-orchestrator | Date: April 2026
+</div>
+
+</div>
+</body>
+</html>

@@ -256,10 +256,27 @@ class AgentConnectionManager:
 
         session_id = msg.get("sessionId")
         if not session_id:
+            logger.warning(
+                "agent_session_output_missing_id",
+                machine_uuid=machine_uuid,
+            )
             return
 
         # Build message for browser clients
         output_msg = msg.get("message", {})
+        msg_role = output_msg.get("role", "assistant")
+        msg_type = output_msg.get("type", "text")
+        content_preview = str(output_msg.get("content", ""))[:120]
+
+        logger.debug(
+            "agent_session_output",
+            machine_uuid=machine_uuid,
+            session_id=session_id,
+            sequence=msg.get("sequence", 0),
+            role=msg_role,
+            msg_type=msg_type,
+            content_preview=content_preview,
+        )
         ws_msg = {
             "type": "session.message",
             "sessionId": session_id,
@@ -300,6 +317,12 @@ class AgentConnectionManager:
         if not session_id:
             return
 
+        logger.info(
+            "agent_session_started",
+            machine_uuid=machine_uuid,
+            session_id=session_id,
+        )
+
         result = await db.execute(
             select(ClaudeSession).where(ClaudeSession.id == session_id)
         )
@@ -322,6 +345,16 @@ class AgentConnectionManager:
         session_id = msg.get("sessionId")
         if not session_id:
             return
+
+        result_data = msg.get("result", {})
+        logger.info(
+            "agent_session_completed",
+            machine_uuid=machine_uuid,
+            session_id=session_id,
+            cost_usd=result_data.get("costUsd"),
+            tokens_in=result_data.get("tokenCountInput"),
+            tokens_out=result_data.get("tokenCountOutput"),
+        )
 
         result = await db.execute(
             select(ClaudeSession).where(ClaudeSession.id == session_id)
@@ -403,6 +436,14 @@ class AgentConnectionManager:
         session_id = msg.get("sessionId")
         if not session_id:
             return
+
+        approval = msg.get("approval", {})
+        logger.info(
+            "agent_approval_required",
+            machine_uuid=machine_uuid,
+            session_id=session_id,
+            tool_name=approval.get("toolName", "unknown"),
+        )
 
         await session_manager._broadcast(
             session_id,

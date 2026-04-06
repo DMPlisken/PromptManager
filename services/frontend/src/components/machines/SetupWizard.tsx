@@ -97,18 +97,20 @@ const copyBtnStyle: React.CSSProperties = {
 };
 
 const stepIndicatorStyle = (active: boolean, completed: boolean): React.CSSProperties => ({
-  width: 24,
-  height: 24,
+  width: 32,
+  height: 32,
   borderRadius: "50%",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  fontSize: 11,
+  fontSize: 13,
   fontWeight: 700,
   background: completed ? "var(--success)" : active ? "var(--accent)" : "var(--bg-input)",
   color: completed || active ? "#fff" : "var(--text-muted)",
-  border: completed || active ? "none" : "1px solid var(--border)",
+  border: completed || active ? "none" : "2px solid var(--border)",
   flexShrink: 0,
+  boxShadow: active ? "0 0 0 3px rgba(124, 92, 252, 0.25)" : completed ? "0 0 0 3px rgba(76, 175, 128, 0.2)" : "none",
+  transition: "all 0.2s ease",
 });
 
 /* ---------- Component ---------- */
@@ -247,22 +249,26 @@ export default function SetupWizard({ onClose, onComplete }: SetupWizardProps) {
     <div style={overlayStyle} onClick={handleOverlayClick}>
       <div style={modalStyle}>
         {/* Step indicator */}
-        <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 28, padding: "0 4px" }}>
           {steps.map((s, i) => (
-            <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <div style={stepIndicatorStyle(i === stepIndex, i < stepIndex)}>
-                {i < stepIndex ? "\u2713" : i + 1}
+            <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 6, flex: i < steps.length - 1 ? 1 : undefined }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                <div style={stepIndicatorStyle(i === stepIndex, i < stepIndex)}>
+                  {i < stepIndex ? "\u2713" : i + 1}
+                </div>
+                <span style={{
+                  fontSize: 10, color: i <= stepIndex ? "var(--text-secondary)" : "var(--text-muted)",
+                  fontWeight: i === stepIndex ? 700 : 400,
+                  whiteSpace: "nowrap",
+                }}>
+                  {s.label}
+                </span>
               </div>
-              <span style={{
-                fontSize: 11, color: i <= stepIndex ? "var(--text-secondary)" : "var(--text-muted)",
-                fontWeight: i === stepIndex ? 600 : 400,
-              }}>
-                {s.label}
-              </span>
               {i < steps.length - 1 && (
                 <div style={{
-                  width: 20, height: 1,
+                  flex: 1, height: 2, borderRadius: 1, marginTop: -16,
                   background: i < stepIndex ? "var(--accent)" : "var(--border)",
+                  transition: "background 0.3s ease",
                 }} />
               )}
             </div>
@@ -283,24 +289,27 @@ export default function SetupWizard({ onClose, onComplete }: SetupWizardProps) {
                 onClick={() => setPlatform("darwin")}
                 style={platformBtnStyle(platform === "darwin") as React.CSSProperties}
               >
-                <span style={{ fontSize: 28 }}>Apple</span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>macOS</span>
+                <span style={{ fontSize: 36, lineHeight: 1 }}>{"\uD83C\uDF4F"}</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>macOS</span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)", textAlign: "center" }}>Intel or Apple Silicon</span>
               </button>
               <button
                 type="button"
                 onClick={() => setPlatform("win32")}
                 style={platformBtnStyle(platform === "win32") as React.CSSProperties}
               >
-                <span style={{ fontSize: 28 }}>Win</span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Windows</span>
+                <span style={{ fontSize: 36, lineHeight: 1 }}>{"\uD83E\uDEDF"}</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Windows</span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)", textAlign: "center" }}>Windows 10 / 11</span>
               </button>
               <button
                 type="button"
                 onClick={() => setPlatform("linux")}
                 style={platformBtnStyle(platform === "linux") as React.CSSProperties}
               >
-                <span style={{ fontSize: 28 }}>Tux</span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Linux</span>
+                <span style={{ fontSize: 36, lineHeight: 1 }}>{"\uD83D\uDC27"}</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Linux</span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)", textAlign: "center" }}>Ubuntu, Debian, etc.</span>
               </button>
             </div>
 
@@ -331,25 +340,30 @@ export default function SetupWizard({ onClose, onComplete }: SetupWizardProps) {
 
             {/* Pairing code display */}
             <div style={{
-              background: "var(--bg-card)", borderRadius: "var(--radius-lg)",
-              border: "2px solid var(--accent)", padding: "24px 20px",
+              background: "linear-gradient(135deg, rgba(124, 92, 252, 0.08), var(--bg-card))",
+              borderRadius: "var(--radius-lg)",
+              border: "2px solid var(--accent)", padding: "32px 20px",
               textAlign: "center", marginBottom: 20,
             }}>
-              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600 }}>
                 Pairing Code
               </div>
               <div style={{
-                fontSize: 36, fontWeight: 700, letterSpacing: "0.2em",
+                fontSize: 44, fontWeight: 800, letterSpacing: "0.25em",
                 color: "var(--accent)", fontFamily: "monospace",
+                marginBottom: 4,
+                textShadow: "0 0 20px rgba(124, 92, 252, 0.3)",
               }}>
                 {pairingCode.code}
               </div>
               <button
                 onClick={() => handleCopy(pairingCode.code, "code")}
                 style={{
-                  marginTop: 12, padding: "4px 14px", fontSize: 12,
-                  background: "transparent", border: "1px solid var(--border)",
-                  borderRadius: "var(--radius)", color: "var(--text-muted)", cursor: "pointer",
+                  marginTop: 14, padding: "8px 24px", fontSize: 13, fontWeight: 600,
+                  background: copied === "code" ? "var(--success)" : "var(--accent)",
+                  border: "none",
+                  borderRadius: "var(--radius)", color: "#fff", cursor: "pointer",
+                  transition: "all 0.2s ease",
                 }}
               >
                 {copied === "code" ? "Copied!" : "Copy Code"}
@@ -389,7 +403,14 @@ export default function SetupWizard({ onClose, onComplete }: SetupWizardProps) {
               Run these commands on the target machine ({platform === "darwin" ? "macOS Terminal" : platform === "win32" ? "Windows PowerShell" : "Linux Terminal"}).
             </p>
 
-            <div style={{ marginBottom: 8 }}>
+            <div style={{
+              fontSize: 11, fontWeight: 600, color: "var(--text-muted)", marginBottom: 10,
+              textTransform: "uppercase", letterSpacing: "0.05em",
+              borderBottom: "1px solid var(--border)", paddingBottom: 6,
+            }}>
+              Manual Installation
+            </div>
+            <div style={{ marginBottom: 8, opacity: 0.85 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>
                 Step 1: Install the agent
               </div>
@@ -420,12 +441,21 @@ export default function SetupWizard({ onClose, onComplete }: SetupWizardProps) {
             </div>
 
             {/* Claude Code auto-install prompt */}
-            <div style={{ marginBottom: 20, marginTop: 8 }}>
+            <div style={{
+              marginBottom: 20, marginTop: 8,
+              padding: 16, borderRadius: "var(--radius-lg)",
+              border: "2px solid var(--accent)", background: "rgba(124, 92, 252, 0.06)",
+            }}>
               <div style={{
-                fontSize: 13, fontWeight: 700, color: "var(--accent)", marginBottom: 8,
+                fontSize: 14, fontWeight: 700, color: "var(--accent)", marginBottom: 8,
                 display: "flex", alignItems: "center", gap: 8,
               }}>
-                <span style={{ fontSize: 16 }}>*</span> Easiest: Paste this into Claude Code CLI
+                <span style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  width: 24, height: 24, borderRadius: "50%",
+                  background: "var(--accent)", color: "#fff", fontSize: 12, fontWeight: 700,
+                }}>{">"}</span>
+                Recommended: Paste into Claude Code CLI
               </div>
               <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
                 Open Claude Code on the target machine and paste this prompt. It will install, configure, pair, and start the agent automatically.
@@ -514,21 +544,29 @@ Do all steps. Report success or any errors.`, "claudeprompt")}
               display: "flex", flexDirection: "column", alignItems: "center",
               padding: "32px 20px", marginBottom: 24,
             }}>
-              {/* Spinner */}
+              {/* Pulsing spinner */}
               <div style={{
-                width: 48, height: 48, borderRadius: "50%",
+                width: 56, height: 56, borderRadius: "50%",
                 border: "3px solid var(--border)",
                 borderTopColor: "var(--accent)",
                 animation: "spin 1s linear infinite",
                 marginBottom: 16,
+                boxShadow: "0 0 0 6px rgba(124, 92, 252, 0.1)",
               }} />
-              <div style={{ fontSize: 14, color: "var(--text-secondary)", fontWeight: 500 }}>
+              <div style={{ fontSize: 15, color: "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>
                 Listening for agent connection...
               </div>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>
-                Pairing code: <span style={{ fontFamily: "monospace", fontWeight: 600, color: "var(--accent)" }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+                Pairing code: <span style={{ fontFamily: "monospace", fontWeight: 700, color: "var(--accent)", fontSize: 14 }}>
                   {pairingCode?.code}
                 </span>
+              </div>
+              <div style={{
+                fontSize: 11, color: "var(--text-muted)", marginTop: 12,
+                padding: "6px 14px", borderRadius: 20,
+                background: "rgba(224, 160, 48, 0.1)", border: "1px solid rgba(224, 160, 48, 0.2)",
+              }}>
+                This usually takes 10-30 seconds
               </div>
             </div>
 

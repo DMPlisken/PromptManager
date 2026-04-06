@@ -107,10 +107,48 @@ class SessionManager:
         except CircuitBreakerOpen:
             session.status = SessionStatus.FAILED.value
             await db.commit()
-            raise ValueError("Sidecar is unreachable. Cannot create session.")
-        except Exception:
+            logger.error(
+                "session_create_failed_circuit_open",
+                session_id=session_id,
+            )
+            raise ValueError(
+                "Sidecar is unreachable (circuit breaker open). "
+                "Check that the orchestrator sidecar is running on port 9100 "
+                "and that ORCHESTRATOR_URL is configured correctly in .env."
+            )
+        except ConnectionError as exc:
             session.status = SessionStatus.FAILED.value
             await db.commit()
+            logger.error(
+                "session_create_connection_error",
+                session_id=session_id,
+                error=str(exc),
+            )
+            raise ValueError(
+                f"Cannot connect to orchestrator sidecar: {exc}. "
+                "Ensure the sidecar is running: cd services/orchestrator && ./run.sh"
+            )
+        except TimeoutError as exc:
+            session.status = SessionStatus.FAILED.value
+            await db.commit()
+            logger.error(
+                "session_create_timeout",
+                session_id=session_id,
+                error=str(exc),
+            )
+            raise ValueError(
+                f"Sidecar request timed out: {exc}. "
+                "The orchestrator may be overloaded or unresponsive."
+            )
+        except Exception as exc:
+            session.status = SessionStatus.FAILED.value
+            await db.commit()
+            logger.error(
+                "session_create_unexpected_error",
+                session_id=session_id,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
             raise
 
         return session
@@ -140,13 +178,29 @@ class SessionManager:
         if machine is None:
             session.status = SessionStatus.FAILED.value
             await db.commit()
-            raise ValueError(f"Machine with id {machine_id} not found")
+            logger.error(
+                "session_agent_machine_not_found",
+                session_id=session_id,
+                machine_id=machine_id,
+            )
+            raise ValueError(
+                f"Machine with id {machine_id} not found. "
+                "It may have been removed. Refresh the machines list and try again."
+            )
 
         if not agent_manager.is_online(machine.machine_uuid):
             session.status = SessionStatus.FAILED.value
             await db.commit()
+            logger.warning(
+                "session_agent_machine_offline",
+                session_id=session_id,
+                machine_id=machine_id,
+                machine_name=machine.name,
+            )
             raise ValueError(
-                f"Machine '{machine.name}' is offline. Cannot create session."
+                f"Machine '{machine.name}' is currently offline. "
+                "Ensure the agent is running on that machine and has a stable "
+                "network connection to the server."
             )
 
         # Dispatch to the agent via WebSocket
@@ -165,8 +219,16 @@ class SessionManager:
         if not dispatched:
             session.status = SessionStatus.FAILED.value
             await db.commit()
+            logger.error(
+                "session_agent_dispatch_failed",
+                session_id=session_id,
+                machine_uuid=machine.machine_uuid,
+                machine_name=machine.name,
+            )
             raise ValueError(
-                f"Failed to dispatch session to machine '{machine.name}'"
+                f"Failed to dispatch session to machine '{machine.name}'. "
+                "The agent WebSocket connection may have dropped. "
+                "Check the agent logs on that machine."
             )
 
         # Mark as running — the agent will update status via WS messages

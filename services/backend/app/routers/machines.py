@@ -66,6 +66,25 @@ async def list_machines(
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
+    # Clean up stale pairing records older than 1 hour
+    stale_cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
+    stale_query = select(Machine).where(
+        Machine.status == "pairing",
+        Machine.pairing_expires_at < stale_cutoff,
+    )
+    stale_result = await db.execute(stale_query)
+    stale_machines = stale_result.scalars().all()
+    for stale in stale_machines:
+        logger.info(
+            "cleanup_stale_pairing",
+            machine_id=stale.id,
+            pairing_code=stale.pairing_code,
+            expired_at=stale.pairing_expires_at.isoformat() if stale.pairing_expires_at else "unknown",
+        )
+        await db.delete(stale)
+    if stale_machines:
+        await db.commit()
+
     query = select(Machine).order_by(desc(Machine.registered_at))
     if status:
         query = query.where(Machine.status == status)

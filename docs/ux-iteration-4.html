@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PromptFlow UX — Iteration 4 Report</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #1a1b2e; --card: #232440; --card-raised: #282a4d;
+  --accent: #7c5cfc; --accent-hover: #9478ff; --accent-dim: rgba(124,92,252,0.12);
+  --text: #e8e8f0; --text-dim: #a0a0b8; --text-muted: #6a6a88; --border: #3a3b5a;
+  --green: #4ade80; --green-dim: rgba(74,222,128,0.12);
+  --yellow: #fbbf24; --yellow-dim: rgba(251,191,36,0.12);
+  --red: #f87171; --blue: #60a5fa; --blue-dim: rgba(96,165,250,0.12);
+  --mono: 'Menlo','Consolas','Courier New',monospace;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.6; }
+::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.container { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+h2 { font-size: 20px; font-weight: 600; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+h3 { font-size: 16px; font-weight: 600; margin: 20px 0 10px; color: var(--accent); }
+.subtitle { color: var(--text-dim); margin-bottom: 24px; }
+.badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.badge-green { background: var(--green-dim); color: var(--green); }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+.progress-bar { display: flex; gap: 4px; margin-bottom: 32px; }
+.progress-step { flex: 1; height: 6px; border-radius: 3px; background: var(--border); }
+.progress-step.done { background: var(--green); }
+.progress-step.current { background: var(--accent); }
+ul { margin-left: 20px; margin-bottom: 12px; }
+li { margin-bottom: 6px; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+th { color: var(--text-dim); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+.nav-links { display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border); }
+.nav-links a { color: var(--accent); text-decoration: none; }
+.nav-links a:hover { color: var(--accent-hover); }
+code { font-family: var(--mono); font-size: 13px; background: var(--card-raised); padding: 1px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>UX Iteration 4 — Setup Wizard & Connection Status</h1>
+<p class="subtitle">Focus: SetupWizard UX improvements, ConnectionStatus refinement, navigation hover states</p>
+
+<div class="progress-bar">
+  <div class="progress-step done"></div><div class="progress-step done"></div><div class="progress-step done"></div>
+  <div class="progress-step current"></div>
+  <div class="progress-step"></div><div class="progress-step"></div><div class="progress-step"></div>
+  <div class="progress-step"></div><div class="progress-step"></div><div class="progress-step"></div>
+</div>
+
+<div class="card">
+  <h3>Theme</h3>
+  <p>Iteration 4 addressed the <strong>setup wizard</strong> for adding new machines and the <strong>connection status</strong> indicator. Both are critical user touchpoints — the wizard is the first experience a user has when expanding their fleet, and the connection status must communicate state without causing anxiety.</p>
+</div>
+
+<h2>Changes Made</h2>
+
+<div class="card">
+  <h3>Connection Status Indicator</h3>
+  <ul>
+    <li>Less alarming when WS is offline but machines are online — now shows "WS offline" with a gentle pulse instead of a red "Disconnected" warning</li>
+    <li>Pulsing dot animation on reconnecting/connecting states using CSS keyframes</li>
+    <li>Three-state indicator: green (connected), yellow pulsing (reconnecting), dim gray (offline)</li>
+    <li>Tooltip on hover explains what each state means</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h3>Sidebar Navigation Polish</h3>
+  <ul>
+    <li>Tasks link visually distinct as primary nav item with accent border and background tint</li>
+    <li>Hover effects on all nav items (Sessions, Machines, History, Manual, Quick Help)</li>
+    <li>Active page indicated with left border accent and background highlight</li>
+    <li>Consistent 8px border-radius on all interactive nav elements</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h3>Status Color Utility Classes</h3>
+  <ul>
+    <li>Added CSS utility classes for consistent status colors across all components</li>
+    <li><code>.status-online</code>, <code>.status-offline</code>, <code>.status-pairing</code> with matching opacity backgrounds</li>
+    <li>Ensures MachineCard, SessionCard, ConnectionStatus all use the same palette</li>
+  </ul>
+</div>
+
+<h2>Test Results</h2>
+
+<div class="card">
+  <table>
+    <tr><th>Test Suite</th><th>Tests</th><th>Status</th></tr>
+    <tr><td>Navigation</td><td>3/3</td><td><span class="badge badge-green">PASS</span></td></tr>
+    <tr><td>Groups CRUD</td><td>3/3</td><td><span class="badge badge-green">PASS</span></td></tr>
+    <tr><td>Templates</td><td>3/3</td><td><span class="badge badge-green">PASS</span></td></tr>
+    <tr><td>Sessions</td><td>3/3</td><td><span class="badge badge-green">PASS</span></td></tr>
+    <tr><td>Prompt Workflow</td><td>3/3</td><td><span class="badge badge-green">PASS</span></td></tr>
+    <tr><th colspan="2">Total</th><td><strong>15/15</strong> <span class="badge badge-green">ALL PASS</span></td></tr>
+  </table>
+</div>
+
+<h2>UX Expert Feedback</h2>
+
+<div class="card">
+  <p><strong>Positive:</strong> The connection status is much better now — no false alarms. The sidebar nav feels responsive and alive with hover states. Good use of consistent status colors.</p>
+  <p style="margin-top: 12px;"><strong>Suggestions for next iteration:</strong></p>
+  <ul>
+    <li>The sessions page could benefit from a "quick actions" context menu on session cards</li>
+    <li>Consider adding keyboard shortcuts documentation in the help panel</li>
+    <li>History page could use similar card-based styling for execution records</li>
+  </ul>
+</div>
+
+<div class="nav-links">
+  <a href="ux-iteration-3.html">&larr; Iteration 3</a>
+  <a href="ux-iteration-5.html">Iteration 5 &rarr;</a>
+</div>
+
+</div>
+</body>
+</html>

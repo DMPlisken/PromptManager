@@ -110,3 +110,35 @@ a:hover {
 .status-bg-waiting { background: rgba(224, 160, 48, 0.1); }
 .status-bg-failed { background: rgba(224, 85, 85, 0.1); }
 .status-bg-accent { background: rgba(124, 92, 252, 0.1); }
+
+/* Page transition fade-in */
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+main > * {
+  animation: pageFadeIn 0.2s ease-out;
+}
+
+/* Mobile responsiveness — collapse sidebar on small screens */
+@media (max-width: 768px) {
+  /* The sidebar becomes a top bar or hidden on mobile */
+  aside[style] {
+    width: 0 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+
+  main[style] {
+    padding: 12px !important;
+  }
+}
+
+/* Pulsing animation for waiting spinner */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 6px rgba(124, 92, 252, 0.1); }
+  50% { box-shadow: 0 0 0 12px rgba(124, 92, 252, 0.2); }
+}

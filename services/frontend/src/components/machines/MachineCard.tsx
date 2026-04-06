@@ -12,11 +12,20 @@ interface MachineCardProps {
 
 function platformIcon(platform: MachinePlatform | null): string {
   switch (platform) {
-    case "darwin": return "\uD83C\uDF4E";
-    case "win32": return "\uD83E\uDE9F";
+    case "darwin": return "\uD83C\uDF4F";
+    case "win32": return "\uD83E\uDEDF";
     case "linux": return "\uD83D\uDC27";
     default: return "?";
   }
+}
+
+function formatUptime(seconds: number | undefined): string | null {
+  if (!seconds || seconds <= 0) return null;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m up`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h up`;
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  return `${days}d ${hours}h up`;
 }
 
 function platformLabel(platform: MachinePlatform | null): string {
@@ -63,10 +72,13 @@ function formatMb(mb: number): string {
 /* ---------- Styles ---------- */
 
 const cardStyle = (color: string, isHovered: boolean): React.CSSProperties => ({
-  background: `linear-gradient(135deg, color-mix(in srgb, ${color} 5%, var(--bg-card)) 0%, var(--bg-card) 100%)`,
+  background: `linear-gradient(135deg, color-mix(in srgb, ${color} 6%, var(--bg-card)) 0%, var(--bg-card) 100%)`,
   borderRadius: "var(--radius-lg)",
   border: "1px solid var(--border)",
   borderLeft: `4px solid ${color}`,
+  borderImage: `linear-gradient(180deg, ${color}, color-mix(in srgb, ${color} 40%, transparent)) 1`,
+  borderImageSlice: 1,
+  borderImageWidth: "0 0 0 4px",
   padding: 16,
   transition: "all 0.2s ease",
   ...(isHovered ? { borderColor: "var(--accent)", boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)" } : {}),
@@ -165,6 +177,7 @@ export default function MachineCard({ machine, onEdit, onRemove }: MachineCardPr
             <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
               {platformLabel(machine.platform)}
               {machine.hostname ? ` \u00B7 ${machine.hostname}` : ""}
+              {machine.ip_address ? ` \u00B7 ${machine.ip_address}` : ""}
             </div>
           </div>
         </div>
@@ -262,11 +275,21 @@ export default function MachineCard({ machine, onEdit, onRemove }: MachineCardPr
         </div>
       )}
 
-      {/* Footer: last seen + actions */}
+      {/* Footer: last seen + uptime + actions */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-          {machine.status === "online" ? `Last seen ${lastSeen}` : machine.status === "pairing" ? "Waiting..." : `Offline \u00B7 ${lastSeen}`}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+            {machine.status === "online" ? `Last seen ${lastSeen}` : machine.status === "pairing" ? "Waiting..." : `Offline \u00B7 ${lastSeen}`}
+          </span>
+          {machine.status === "online" && health?.uptimeSeconds && formatUptime(health.uptimeSeconds) && (
+            <span style={{
+              fontSize: 10, fontWeight: 500, padding: "1px 6px", borderRadius: 12,
+              background: "rgba(76, 175, 128, 0.1)", color: "var(--success)",
+            }}>
+              {formatUptime(health.uptimeSeconds)}
+            </span>
+          )}
+        </div>
         <div style={{ display: "flex", gap: 6 }}>
           {machine.status === "online" && (
             <button

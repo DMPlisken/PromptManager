@@ -199,9 +199,90 @@
 - [x] Frontend: Sidebar — hover effects on all nav items (Sessions, Machines, History, Manual, Quick Help)
 - [x] Frontend: CSS — added status color utility classes for consistent opacity backgrounds
 
+### Completed (UX Polish Pass 2-5)
+- [x] Frontend: Sessions page — professional info bar with pill badges for status, model, directory, cost, token counts
+- [x] Frontend: Sessions page — sidebar sessions grouped by status category (Active, Completed, Failed)
+- [x] Frontend: Sessions page — relative time display ("2m ago") on sidebar session cards
+- [x] Frontend: Sessions page — model badge on sidebar cards with accent coloring
+- [x] Frontend: Sessions page — tab name truncation with ellipsis (max 200px)
+- [x] Frontend: Sessions page — toast notifications for session create/remove actions
+- [x] Frontend: MachineCard — IP address display when available
+- [x] Frontend: MachineCard — uptime indicator badge from health.uptimeSeconds
+- [x] Frontend: MachineCard — gradient left border using machine color accent
+- [x] Frontend: MachinesPage — stats bar with total active sessions count and total cost
+- [x] Frontend: MachinesPage — improved empty state with ASCII art illustration and setup steps
+- [x] Frontend: MachinesPage — toast notifications for machine edit/remove actions
+- [x] Frontend: SetupWizard — larger step indicator (32px) with glow shadow on active step
+- [x] Frontend: SetupWizard — step connector bars that fill as steps progress
+- [x] Frontend: SetupWizard — platform buttons with emoji icons and platform descriptions
+- [x] Frontend: SetupWizard — bigger pairing code (44px) with gradient background and prominent copy button with "Copied!" state
+- [x] Frontend: SetupWizard — manual install section with "Manual Installation" header label
+- [x] Frontend: SetupWizard — Claude Code prompt section highlighted with accent border and icon badge
+- [x] Frontend: SetupWizard — waiting step with larger pulsing spinner and "10-30 seconds" timing hint
+- [x] Frontend: Layout — left border accent (3px) on active sidebar navigation items
+- [x] Frontend: Layout — separator line between Sessions/Machines and History/Manual sections
+- [x] Frontend: Layout — page transition fade-in animation on route change
+- [x] Frontend: CSS — pageFadeIn animation for smooth page transitions
+- [x] Frontend: CSS — mobile responsive sidebar collapse at 768px breakpoint
+- [x] Frontend: CSS — pulseGlow animation for waiting states
+
 ### Pending (Future Enhancements)
 - [ ] Frontend: Markdown rendering for assistant messages
 - [ ] Frontend: Code block syntax highlighting
 - [ ] Frontend: Token/cost display component
 - [ ] Frontend: Virtual scrolling for 10K+ messages
 - [ ] Frontend: Session search and filtering
+
+## v2.1 — UX Polish (10 Iterations)
+
+### Completed (Iteration 1 — Bug Fixes + UX Expert Review)
+- [x] Fix: BUG-001 — Sessions page blank from TypeError on undefined.substring()
+- [x] Fix: BUG-002 — Test output "(no output received)" — parse metadata_json
+- [x] Fix: BUG-003 — Stale pairing records on wizard cancel — frontend cleanup + machine_id in PairingCodeResponse
+- [x] Fix: BUG-004 — MachineCard crash on undefined machine_uuid
+- [x] Frontend: ErrorBoundary component wrapping main content area
+- [x] Frontend: Sessions page empty state with "Create your first session" CTA
+
+### Completed (Iteration 2 — Sessions Page Polish)
+- [x] Frontend: Tab bar redesign with bottom accent border and transitions
+- [x] Frontend: Sidebar session cards with card backgrounds and status badges
+- [x] Frontend: "No session selected" empty state with icon and CTA
+
+### Completed (Iteration 3 — Machine Card Improvements)
+- [x] Frontend: Platform badges with emoji icons
+- [x] Frontend: Disk space metric and human-readable memory
+- [x] Frontend: Gradient card backgrounds and hover elevation
+
+### Completed (Iteration 4 — Setup Wizard & Connection Status)
+- [x] Frontend: Less alarming connection status with pulsing dot animation
+- [x] Frontend: Sidebar navigation hover effects
+- [x] Frontend: Status color utility classes
+
+### Completed (Iteration 5 — History Page & Typography)
+- [x] Frontend: History page card-based layout with group badges
+- [x] Frontend: Standardized typography (H1 28px, H2 20px, H3 16px, body 14px)
+- [x] Frontend: Consistent spacing system (16px cards, 32px sections)
+
+### Completed (Iteration 6 — Backend: Stale Pairing Cleanup)
+- [x] Backend: Auto-cleanup of stale pairing records older than 1 hour on GET /machines
+- [x] Backend: Structured logging for cleanup events
+
+### Completed (Iteration 7 — Backend: Better Error Messages)
+- [x] Backend: Actionable error messages for CircuitBreakerOpen, ConnectionError, TimeoutError
+- [x] Backend: Improved error messages for machine-not-found, machine-offline, dispatch-failed
+- [x] Backend: Structured logging for all session creation error paths
+
+### Completed (Iteration 8 — Backend: Agent Manager Logging)
+- [x] Backend: Debug-level logging for session output messages with content preview
+- [x] Backend: INFO-level logging for session started, completed, approval required events
+- [x] Backend: Warning log for missing session ID in agent output
+
+### Completed (Iteration 9 — Documentation: User Manual)
+- [x] Docs: USER_MANUAL.md updated to v2.1, last-updated 2026-04-07
+- [x] Docs: Added Troubleshooting section (Section 15) with 7 common issues
+- [x] Docs: Updated Section 14 with machine card UI changes
+
+### Completed (Iteration 10 — Documentation: Roadmap & Summary)
+- [x] Docs: ROADMAP_PROGRESS.md updated with v2.1 UX Polish section
+- [x] Docs: Created ux-iterations-summary.html comprehensive report
+- [x] Docs: Created ux-iteration-2.html through ux-iteration-10.html individual reports
