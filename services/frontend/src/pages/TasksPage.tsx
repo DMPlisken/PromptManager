@@ -96,6 +96,12 @@ export default function TasksPage({ onHelp }: { onHelp?: (id: string) => void })
       result = result.filter((t) => t.tag_ids.some((id) => activeTagIds.has(id)));
     }
     result.sort((a, b) => {
+      // Active always above Done
+      if (a.status !== b.status) {
+        if (a.status === "active") return -1;
+        if (b.status === "active") return 1;
+      }
+      // Then by selected sort
       if (sortField === "date") {
         const cmp = new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
         return sortDir === "desc" ? -cmp : cmp;
