@@ -432,58 +432,172 @@ Sessions continue running on the server even if your browser disconnects tempora
 
 ---
 
-## 14. Multi-Machine Orchestration (Coming Soon)
+## 14. Multi-Machine Orchestration
 
-> **Status:** Planned feature. Not yet implemented.
+Multi-machine orchestration lets you manage Claude Code CLI sessions across multiple computers (Mac, Windows, Linux) from one PromptFlow dashboard. Each workstation runs a lightweight **agent** that connects to the server.
 
-Multi-machine orchestration will let you manage Claude Code CLI sessions across multiple computers from one PromptFlow dashboard.
+> **Visual Guide:** For a detailed interactive walkthrough with high-fidelity mockups, open `docs/machine-setup-guide.html` in your browser.
 
-### Vision
+### Step-by-Step: Setting Up a New Client Machine
 
-Today, the orchestrator sidecar runs on the same machine as your Docker stack. The multi-machine extension lets you install lightweight **agents** on remote workstations (Mac, Windows, Linux) that connect back to the PromptFlow server. You can then dispatch sessions to any connected machine from the web UI.
+#### Step 1: Open the Machines Page
 
-### Agent Concept
+Navigate to **Machines** in the sidebar. You'll see the dashboard showing any already-connected machines with their status.
 
-- A lightweight background process installed on each workstation.
-- The agent connects **outbound** to the PromptFlow server — no firewall or port-forwarding configuration needed on the workstation.
-- Each agent manages local Claude Code CLI subprocesses and relays output back to the server.
-- Agents report health metrics (CPU, memory, active session count) at regular intervals.
+![Machines Page](screenshots/01-machines-page.png)
+*The Machines page shows connected machines with status badges. Click "+ Add Machine" to begin setup.*
 
-### Machine Registration
+#### Step 2: Start the Setup Wizard — Choose Platform
 
-1. Install the agent on the target workstation.
-2. Run the pairing command — the agent contacts the server and registers itself.
-3. The machine appears on the **Machines** dashboard in the web UI.
-4. Approve the machine from the dashboard to allow it to receive sessions.
+Click **"+ Add Machine"**. The setup wizard opens with a 5-step progress indicator. Choose your platform: **macOS**, **Windows**, or **Linux**.
 
-### Machine Dashboard
+![Setup Wizard - Platform Selection](screenshots/02-wizard-platform.png)
+*Choose the platform of the machine you want to connect. The step indicator shows your progress.*
 
-The Machines page will show:
+#### Step 3: Generate a Pairing Code
 
-- All connected machines with their hostname, OS, and status (online/offline).
-- Health metrics: CPU usage, memory usage, number of active sessions.
-- Last heartbeat timestamp.
-- Quick actions: pause (stop accepting new sessions), remove, view sessions.
+After selecting your platform, click **Next**. The server generates a **6-character pairing code** and an **API key**. These are used to authenticate the agent.
 
-### Session Dispatch
+![Pairing Code Generated](screenshots/04-wizard-pairing-code.png)
+*The pairing code is displayed prominently. You'll enter this on the target machine. The API key is shown below for manual setup.*
 
-When creating a new session, you will be able to:
+- The pairing code expires after **10 minutes**.
+- The API key is a permanent credential — it's hashed and stored securely on the server.
+- You can copy either value by clicking the copy buttons.
 
-- **Choose a specific machine** from a dropdown.
-- **Auto-select** the least-loaded machine (based on active session count and resource usage).
-- Sessions are routed to the selected machine's agent, which spawns the Claude Code CLI subprocess locally.
+#### Step 4: Install the Agent — Three Options
 
-### Cross-Platform Support
+Click **Next** to see the install instructions. You have **three options**, from easiest to most manual:
 
-The agent will work on:
+![Install Instructions](screenshots/05-wizard-install.png)
+*The install step shows manual commands and the Claude Code auto-install prompt.*
 
-- **macOS** — Native support for Apple Silicon and Intel.
-- **Windows** — Runs as a background service or tray application.
-- **Linux** — Runs as a systemd service or standalone process.
+**Option A: Claude Code Auto-Install (Recommended)**
+
+This is the easiest method. The wizard generates a complete prompt that you paste into Claude Code CLI on the target machine. Claude Code handles everything automatically:
+
+1. Open **Claude Code CLI** on the target workstation
+2. Click the purple **"Copy Prompt"** button in the wizard
+3. Paste the prompt into Claude Code
+4. Claude Code will: clone the agent, install dependencies, create the config file, pair with the server, start the agent, and verify the connection
+
+![Claude Code Prompt](screenshots/06-wizard-claude-prompt.png)
+*The Claude Code auto-install prompt includes the pairing code, API key, and server URL baked in.*
+
+**Option B: Manual npm Install**
+
+If you prefer manual setup:
+
+```bash
+# Step 1: Install the agent
+npm install -g @promptflow/agent
+
+# Step 2: Pair with the server (replace CODE with your pairing code)
+promptflow-agent pair CODE --server ws://YOUR_SERVER:3001
+```
+
+**Option C: Download and Run from Source**
+
+```bash
+git clone https://github.com/DMPlisken/PromptManager.git /tmp/promptflow-setup
+cd /tmp/promptflow-setup && git checkout feature/claude-orchestrator
+cd services/agent && npm install
+npx tsx src/index.ts pair CODE --server ws://YOUR_SERVER:3001
+npx tsx src/index.ts start
+```
+
+#### Step 5: Wait for Connection
+
+After running the install commands, click **"I've run the commands"**. The wizard shows a spinner and waits for the agent to connect.
+
+The wizard **auto-detects** when the agent successfully connects — you'll see the spinner change to a green checkmark within seconds of the agent starting.
+
+#### Step 6: Machine Connected — Configure
+
+Once connected, the wizard shows a success screen with the machine's hostname and platform. You can:
+
+- Give the machine a **friendly name** (e.g., "Office MacBook", "Build Server")
+- Click **Done** to finish
+
+The machine now appears on the Machines dashboard with a green "Online" status.
+
+### Managing Connected Machines
+
+#### Machine Dashboard
+
+The Machines page shows all registered machines:
+
+- **Status badges**: "N online" / "N offline" with colored indicators
+- **Machine cards**: Each card shows name, platform, status, health metrics, and last seen time
+- **Actions**: Edit settings, remove machine
+
+#### Editing Machine Settings
+
+Click **Edit** on any machine card to open the settings modal:
+
+- **Name**: Change the display name
+- **Color**: Pick from 8 preset colors (used as the card's accent border)
+- **Workspace Root**: Set the allowed directory for Claude Code sessions
+- **Max Concurrent Sessions**: Limit how many sessions this machine runs simultaneously
+- **Remove Machine**: Permanently delete the machine registration
+
+### Running Sessions on Specific Machines
+
+#### From the Sessions Page
+
+1. Go to **Sessions** and click **"+ New Session"**
+2. In the session creation modal, the **"Target Machine"** dropdown lists all online machines
+3. Each option shows: machine name, active session count, and whether it's at capacity
+4. Select **"Auto (least loaded)"** to let the server pick the best machine
+5. Fill in the prompt, working directory, and model, then click **Start Session**
+
+#### From a Template (Send to Claude)
+
+1. Go to any **group page** in the Template Library
+2. Fill in the variables and preview the rendered prompt
+3. Click **"Send to Claude"** (next to "Copy to Clipboard")
+4. In the modal, select the **target machine** from the dropdown
+5. Click **Start Session**
+
+The session streams output in real-time from the remote machine to your browser.
+
+### Monitoring Machine Health
+
+The sidebar shows:
+- **Machines (N)** — number of online machines
+- A **red badge** appears if any machine goes offline
+
+Each machine card on the dashboard displays:
+- **CPU** usage (bar: green < 70%, yellow 70-90%, red > 90%)
+- **Memory** usage (same thresholds)
+- **Active sessions** count vs maximum
+- **Last seen** relative timestamp (e.g., "12s ago")
 
 ### Security
 
-- **API key authentication** — Each agent authenticates with a unique API key issued during pairing.
-- **Workspace restrictions** — Per-machine configuration limits which directories Claude Code can access.
-- **TLS** — Agent-to-server communication is encrypted.
-- **Revocation** — Remove a machine from the dashboard to immediately revoke its access.
+- **API key authentication** — each agent has a unique API key (SHA-256 hashed on the server)
+- **Workspace restrictions** — `workspace_root` limits which directories Claude Code can access
+- **Pairing codes expire** after 10 minutes and can only be used once
+- **Revocation** — remove a machine from the dashboard to immediately revoke its access
+- **No inbound ports** — agents connect outbound to the server (NAT-friendly, no firewall config)
+
+### Cross-Platform Support
+
+| Platform | Agent Install | Auto-Start | CLI Path |
+|----------|--------------|------------|----------|
+| **macOS** | npm global or source | launchd | `~/.local/bin/claude` |
+| **Windows** | npm global or source | Windows Service | `%APPDATA%\Claude\claude.exe` |
+| **Linux** | npm global or source | systemd | `~/.local/bin/claude` |
+
+### Complete Workflow: Template → Session → Execution
+
+Here's the full end-to-end flow:
+
+1. **Create a Task** on the Tasks page with templates for your workflow (e.g., "Design", "Implement", "Audit")
+2. **Fill variables** (project name, description, iteration count)
+3. **Copy or Send**: Click "Copy to Clipboard" to use manually, or "Send to Claude" to launch a session
+4. **Choose machine**: Select which workstation should run the session
+5. **Monitor**: Watch Claude Code work in real-time on the Sessions page
+6. **Approve tools**: When Claude wants to edit files or run commands, approve from the browser
+7. **Review**: See the completed session output with full message history
+8. **Repeat**: Use the same template with different variables for the next task

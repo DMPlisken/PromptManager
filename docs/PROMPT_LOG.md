@@ -71,3 +71,7 @@
 ### 2026-04-05 — Build complete frontend for multi-machine management (`feature/claude-orchestrator`)
 
 > Build the complete frontend for multi-machine management in PromptFlow. Work in `/Users/cubev/01_Repositories/PromptManager-worktrees/claude-orchestrator/services/frontend/`. [12-task specification: Machine types, machineStore, API client endpoints, MachinesPage with stats/cards/wizard, MachineCard with health bars, SetupWizard 5-step modal, MachineEditModal, SessionCreateModal machine selector, Layout machines nav link, App.tsx route, useWebSocket machine handlers, CSS variables]
+
+### 2026-04-06 11:30 — Create detailed visual manual with screenshots for machine setup and session workflow (`feature/claude-orchestrator`)
+
+> update the manual again and explain very detailed with screenshots (click enlarge) every step from setting up a new client machine until having a claude code cli session running on this machine and executing the tasks defined and assigned.
