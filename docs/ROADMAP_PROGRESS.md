@@ -176,6 +176,14 @@
 ### Pending
 - [ ] Backend: Tests for machine CRUD, pairing flow, agent WebSocket, agent manager
 
+### Completed (Bug Fixes — E2E Testing)
+- [x] Frontend: Fix SessionsPage crash on undefined initialPrompt/id substring (BUG-001)
+- [x] Backend: Fix test_machine output extraction from metadata_json (BUG-002)
+- [x] Frontend + Backend: SetupWizard cleanup on cancel — delete pending machine record (BUG-003)
+- [x] Frontend: MachineCard null guard on machine_uuid.substring (BUG-004)
+- [x] Frontend: ErrorBoundary component wrapping main content area in Layout
+- [x] Frontend: Sessions page empty state with "Create your first session" CTA
+
 ### Pending (Future Enhancements)
 - [ ] Frontend: Markdown rendering for assistant messages
 - [ ] Frontend: Code block syntax highlighting

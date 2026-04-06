@@ -181,30 +181,35 @@ export default function SessionsPage() {
             flexShrink: 0,
           }}
         >
-          {orderedSessions.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => actions.setActiveSession(s.id)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "6px 14px",
-                border: activeSessionId === s.id ? "1px solid var(--accent)" : "1px solid var(--border)",
-                borderRadius: "var(--radius)",
-                background: activeSessionId === s.id ? "var(--accent-light)" : "transparent",
-                color: activeSessionId === s.id ? "var(--accent)" : "var(--text-secondary)",
-                fontSize: 13,
-                fontWeight: activeSessionId === s.id ? 600 : 400,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-              }}
-            >
-              <span style={statusDot(s.status)} />
-              {s.name || (s.id ? s.id.substring(0, 8) : "Session")}
-            </button>
-          ))}
+          {orderedSessions.map((s) => {
+            const isActive = activeSessionId === s.id;
+            return (
+              <button
+                key={s.id}
+                onClick={() => actions.setActiveSession(s.id)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 14px",
+                  border: isActive ? "1px solid var(--accent)" : "1px solid transparent",
+                  borderBottom: isActive ? "2px solid var(--accent)" : "2px solid transparent",
+                  borderRadius: "var(--radius) var(--radius) 0 0",
+                  background: isActive ? "var(--accent-light)" : "transparent",
+                  color: isActive ? "var(--accent)" : "var(--text-secondary)",
+                  fontSize: 13,
+                  fontWeight: isActive ? 600 : 400,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <span style={statusDot(s.status)} />
+                {s.name || (s.id ? s.id.substring(0, 8) : "Session")}
+              </button>
+            );
+          })}
           <button
             onClick={() => setShowCreateModal(true)}
             style={{
@@ -337,13 +342,24 @@ export default function SessionsPage() {
               </div>
             ) : (
               /* Sessions exist but none is selected */
-              <div style={{ textAlign: "center", color: "var(--text-muted)" }}>
-                <p style={{ fontSize: 16, marginBottom: 8 }}>No session selected.</p>
-                <p style={{ fontSize: 14 }}>
-                  Select a session from the tabs or sidebar, or create a new one.
+              <div style={{ textAlign: "center", color: "var(--text-muted)", maxWidth: 400 }}>
+                <div style={{
+                  width: 56, height: 56, borderRadius: "50%",
+                  background: "var(--accent-light)", display: "flex",
+                  alignItems: "center", justifyContent: "center",
+                  margin: "0 auto 16px", fontSize: 22, color: "var(--accent)",
+                  border: "1px solid rgba(124, 92, 252, 0.2)",
+                }}>
+                  {">_"}
+                </div>
+                <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: "var(--text-primary)" }}>
+                  No session selected
                 </p>
-                <button onClick={() => setShowCreateModal(true)} style={{ ...btnStyle("primary"), marginTop: 16 }}>
-                  New Session
+                <p style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 20, color: "var(--text-muted)" }}>
+                  Select a session from the tabs above or the sidebar to view its output, or start a new one.
+                </p>
+                <button onClick={() => setShowCreateModal(true)} style={btnStyle("primary")}>
+                  + New Session
                 </button>
               </div>
             )}
@@ -414,71 +430,85 @@ export default function SessionsPage() {
               No sessions match filter.
             </div>
           ) : (
-            filteredSidebar.map((s) => (
-              <div
-                key={s.id}
-                onClick={() => actions.setActiveSession(s.id)}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: "var(--radius)",
-                  marginBottom: 4,
-                  cursor: "pointer",
-                  background: activeSessionId === s.id ? "var(--accent-light)" : "transparent",
-                  border: activeSessionId === s.id ? "1px solid var(--accent)" : "1px solid transparent",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                  <span style={statusDot(s.status)} />
-                  <span
-                    style={{
-                      fontSize: 13,
-                      fontWeight: activeSessionId === s.id ? 600 : 400,
-                      color: activeSessionId === s.id ? "var(--accent)" : "var(--text-primary)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {s.name || (s.id ? s.id.substring(0, 12) : "Session")}
-                  </span>
-                </div>
-                <div style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 16 }}>
-                  {s.model} &middot; {s.status}
-                </div>
+            filteredSidebar.map((s) => {
+              const isActive = activeSessionId === s.id;
+              return (
                 <div
+                  key={s.id}
+                  onClick={() => actions.setActiveSession(s.id)}
                   style={{
-                    fontSize: 11,
-                    color: "var(--text-muted)",
-                    marginLeft: 16,
-                    marginTop: 2,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
+                    padding: "10px 12px",
+                    borderRadius: "var(--radius-lg)",
+                    marginBottom: 6,
+                    cursor: "pointer",
+                    background: isActive ? "var(--accent-light)" : "var(--bg-card)",
+                    border: isActive ? "1px solid var(--accent)" : "1px solid var(--border)",
+                    transition: "all 0.15s ease",
+                    boxShadow: isActive ? "0 0 0 1px rgba(124, 92, 252, 0.1)" : "none",
                   }}
                 >
-                  {(s.initialPrompt ?? "").substring(0, 60)}{(s.initialPrompt ?? "").length > 60 ? "..." : ""}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <span style={statusDot(s.status)} />
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: isActive ? 600 : 500,
+                        color: isActive ? "var(--accent)" : "var(--text-primary)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        flex: 1,
+                      }}
+                    >
+                      {s.name || (s.id ? s.id.substring(0, 12) : "Session")}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", paddingLeft: 16, display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 12,
+                      background: `color-mix(in srgb, ${statusColors[s.status]} 15%, transparent)`,
+                      color: statusColors[s.status], textTransform: "capitalize",
+                    }}>{s.status.replace("_", " ")}</span>
+                    <span>{s.model}</span>
+                  </div>
+                  {(s.initialPrompt ?? "").length > 0 && (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "var(--text-muted)",
+                        paddingLeft: 16,
+                        marginTop: 4,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {(s.initialPrompt ?? "").substring(0, 60)}{(s.initialPrompt ?? "").length > 60 ? "..." : ""}
+                    </div>
+                  )}
+                  {/* Remove button */}
+                  {["completed", "failed", "terminated", "disconnected"].includes(s.status) && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleRemove(s.id); }}
+                      style={{
+                        marginTop: 6,
+                        marginLeft: 16,
+                        padding: "2px 8px",
+                        fontSize: 11,
+                        background: "transparent",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius)",
+                        color: "var(--text-muted)",
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
-                {/* Remove button */}
-                {["completed", "failed", "terminated", "disconnected"].includes(s.status) && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleRemove(s.id); }}
-                    style={{
-                      marginTop: 6,
-                      marginLeft: 16,
-                      padding: "2px 8px",
-                      fontSize: 11,
-                      background: "transparent",
-                      border: "1px solid var(--border)",
-                      borderRadius: "var(--radius)",
-                      color: "var(--text-muted)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </aside>

@@ -72,7 +72,10 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
           background: active ? "var(--accent-light)" : "transparent",
           color: active ? "var(--accent)" : "var(--text-secondary)",
           fontSize: 14, textDecoration: "none", fontWeight: active ? 600 : 400,
+          transition: "all 0.15s ease",
         }}
+        onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
+        onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
       >
         {label}
       </Link>
@@ -98,7 +101,23 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
 
         {/* Primary: Tasks */}
         <div style={{ padding: "12px 8px" }}>
-          {navLink("/tasks", "Tasks", (p) => p.startsWith("/tasks"))}
+          <Link
+            to="/tasks"
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "10px 12px", borderRadius: "var(--radius)",
+              background: location.pathname.startsWith("/tasks") ? "var(--accent-light)" : "rgba(124, 92, 252, 0.06)",
+              color: location.pathname.startsWith("/tasks") ? "var(--accent)" : "var(--text-primary)",
+              fontSize: 14, textDecoration: "none",
+              fontWeight: 600,
+              border: location.pathname.startsWith("/tasks") ? "1px solid rgba(124, 92, 252, 0.25)" : "1px solid transparent",
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => { if (!location.pathname.startsWith("/tasks")) e.currentTarget.style.background = "rgba(124, 92, 252, 0.08)"; }}
+            onMouseLeave={(e) => { if (!location.pathname.startsWith("/tasks")) e.currentTarget.style.background = "rgba(124, 92, 252, 0.06)"; }}
+          >
+            Tasks
+          </Link>
         </div>
 
         {/* Scrollable middle area */}
@@ -220,7 +239,10 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
               background: location.pathname === "/sessions" ? "var(--accent-light)" : "transparent",
               color: location.pathname === "/sessions" ? "var(--accent)" : "var(--text-secondary)",
               fontSize: 14, textDecoration: "none", fontWeight: location.pathname === "/sessions" ? 600 : 400,
+              transition: "all 0.15s ease",
             }}
+            onMouseEnter={(e) => { if (location.pathname !== "/sessions") e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
+            onMouseLeave={(e) => { if (location.pathname !== "/sessions") e.currentTarget.style.background = "transparent"; }}
           >
             <span>Sessions{activeSessionCount > 0 ? ` (${activeSessionCount})` : ""}</span>
             {pendingApprovals.length > 0 && (
@@ -242,7 +264,10 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
               background: location.pathname === "/machines" ? "var(--accent-light)" : "transparent",
               color: location.pathname === "/machines" ? "var(--accent)" : "var(--text-secondary)",
               fontSize: 14, textDecoration: "none", fontWeight: location.pathname === "/machines" ? 600 : 400,
+              transition: "all 0.15s ease",
             }}
+            onMouseEnter={(e) => { if (location.pathname !== "/machines") e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
+            onMouseLeave={(e) => { if (location.pathname !== "/machines") e.currentTarget.style.background = "transparent"; }}
           >
             <span>Machines{machineStats.total > 0 ? ` (${machineStats.online})` : ""}</span>
             {machineStats.offline > 0 && machineStats.total > 0 && (
@@ -265,7 +290,10 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
                 display: "block", width: "100%", padding: "8px 12px", borderRadius: "var(--radius)",
                 background: "transparent", border: "none", textAlign: "left",
                 color: "var(--text-muted)", fontSize: 14, cursor: "pointer",
+                transition: "all 0.15s ease",
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-muted)"; }}
             >
               ? Quick Help
             </button>

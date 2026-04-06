@@ -12,9 +12,9 @@ interface MachineCardProps {
 
 function platformIcon(platform: MachinePlatform | null): string {
   switch (platform) {
-    case "darwin": return "Apple";
-    case "win32": return "Win";
-    case "linux": return "Linux";
+    case "darwin": return "\uD83C\uDF4E";
+    case "win32": return "\uD83E\uDE9F";
+    case "linux": return "\uD83D\uDC27";
     default: return "?";
   }
 }
@@ -55,16 +55,21 @@ function barColor(percent: number): string {
   return "var(--danger)";
 }
 
+function formatMb(mb: number): string {
+  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+  return `${Math.round(mb)} MB`;
+}
+
 /* ---------- Styles ---------- */
 
 const cardStyle = (color: string, isHovered: boolean): React.CSSProperties => ({
-  background: "var(--bg-card)",
+  background: `linear-gradient(135deg, color-mix(in srgb, ${color} 5%, var(--bg-card)) 0%, var(--bg-card) 100%)`,
   borderRadius: "var(--radius-lg)",
   border: "1px solid var(--border)",
   borderLeft: `4px solid ${color}`,
   padding: 16,
-  transition: "border-color 0.15s",
-  ...(isHovered ? { borderColor: "var(--accent)" } : {}),
+  transition: "all 0.2s ease",
+  ...(isHovered ? { borderColor: "var(--accent)", boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)" } : {}),
 });
 
 const statusDotStyle = (status: MachineStatus): React.CSSProperties => ({
@@ -143,9 +148,9 @@ export default function MachineCard({ machine, onEdit, onRemove }: MachineCardPr
           {/* Platform badge */}
           <span style={{
             display: "inline-flex", alignItems: "center", justifyContent: "center",
-            width: 32, height: 32, borderRadius: "var(--radius)",
-            background: "var(--bg-input)", fontSize: 11, fontWeight: 600,
-            color: "var(--text-secondary)", flexShrink: 0,
+            width: 34, height: 34, borderRadius: "var(--radius)",
+            background: "var(--bg-input)", fontSize: 18,
+            flexShrink: 0, lineHeight: 1,
           }}>
             {platformIcon(machine.platform)}
           </span>
@@ -222,10 +227,22 @@ export default function MachineCard({ machine, onEdit, onRemove }: MachineCardPr
                 transition: "width 0.3s",
               }} />
             </div>
-            <span style={{ fontSize: 11, color: "var(--text-muted)", width: 36, textAlign: "right", flexShrink: 0 }}>
-              {Math.round(health.memoryPercent)}%
+            <span style={{ fontSize: 11, color: "var(--text-muted)", width: 80, textAlign: "right", flexShrink: 0 }}>
+              {health.memoryTotalMb > 0
+                ? `${formatMb(health.memoryUsedMb)} / ${formatMb(health.memoryTotalMb)}`
+                : `${Math.round(health.memoryPercent)}%`}
             </span>
           </div>
+
+          {/* Disk */}
+          {health.diskFreeGb > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, color: "var(--text-muted)", width: 32, flexShrink: 0 }}>DISK</span>
+              <div style={{ flex: 1, fontSize: 11, color: "var(--text-muted)" }}>
+                {health.diskFreeGb.toFixed(1)} GB free
+              </div>
+            </div>
+          )}
 
           {/* Sessions */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
