@@ -143,6 +143,13 @@ export function useWebSocket() {
 
     ws.onclose = () => {
       clearInterval(heartbeatTimer.current);
+
+      // Cap reconnect attempts to avoid flooding
+      if (reconnectAttempt.current >= 10) {
+        sessionStore.dispatch({ type: "SET_WS_STATUS", status: "disconnected" });
+        return;
+      }
+
       sessionStore.dispatch({ type: "SET_WS_STATUS", status: "reconnecting" });
 
       const delay =
