@@ -149,6 +149,8 @@ class SessionManager:
                 f"Machine '{machine.name}' is offline. Cannot create session."
             )
 
+        logger.info("dispatching_to_agent", machine_uuid=machine.machine_uuid, session_id=session_id, online=agent_manager.is_online(machine.machine_uuid))
+
         # Dispatch to the agent via WebSocket
         dispatched = await agent_manager.dispatch_session_create(
             machine.machine_uuid,
@@ -163,12 +165,14 @@ class SessionManager:
         )
 
         if not dispatched:
+            logger.error("dispatch_failed", machine_uuid=machine.machine_uuid, session_id=session_id)
             session.status = SessionStatus.FAILED.value
             await db.commit()
             raise ValueError(
                 f"Failed to dispatch session to machine '{machine.name}'"
             )
 
+        logger.info("dispatch_success", machine_uuid=machine.machine_uuid, session_id=session_id)
         # Mark as running — the agent will update status via WS messages
         session.status = SessionStatus.RUNNING.value
         await db.commit()
