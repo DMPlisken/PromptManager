@@ -202,7 +202,7 @@ export default function SessionsPage() {
               }}
             >
               <span style={statusDot(s.status)} />
-              {s.name || s.id.substring(0, 8)}
+              {s.name || (s.id ? s.id.substring(0, 8) : "Session")}
             </button>
           ))}
           <button
@@ -313,15 +313,40 @@ export default function SessionsPage() {
               gap: 16,
             }}
           >
-            <div style={{ textAlign: "center", color: "var(--text-muted)" }}>
-              <p style={{ fontSize: 16, marginBottom: 8 }}>No session selected.</p>
-              <p style={{ fontSize: 14 }}>
-                Select a session from the tabs or sidebar, or create a new one.
-              </p>
-            </div>
-            <button onClick={() => setShowCreateModal(true)} style={btnStyle("primary")}>
-              New Session
-            </button>
+            {orderedSessions.length === 0 ? (
+              /* Empty state — no sessions exist yet */
+              <div style={{ textAlign: "center", color: "var(--text-muted)", maxWidth: 400 }}>
+                <div style={{
+                  width: 64, height: 64, borderRadius: "50%",
+                  background: "var(--accent-light)", display: "flex",
+                  alignItems: "center", justifyContent: "center",
+                  margin: "0 auto 16px", fontSize: 28,
+                }}>
+                  {">_"}
+                </div>
+                <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: "var(--text-primary)" }}>
+                  No sessions yet
+                </p>
+                <p style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 20 }}>
+                  Create your first Claude Code session to start running prompts on your connected machines.
+                  Sessions let you interact with Claude CLI in real time.
+                </p>
+                <button onClick={() => setShowCreateModal(true)} style={btnStyle("primary")}>
+                  Create your first session
+                </button>
+              </div>
+            ) : (
+              /* Sessions exist but none is selected */
+              <div style={{ textAlign: "center", color: "var(--text-muted)" }}>
+                <p style={{ fontSize: 16, marginBottom: 8 }}>No session selected.</p>
+                <p style={{ fontSize: 14 }}>
+                  Select a session from the tabs or sidebar, or create a new one.
+                </p>
+                <button onClick={() => setShowCreateModal(true)} style={{ ...btnStyle("primary"), marginTop: 16 }}>
+                  New Session
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -414,7 +439,7 @@ export default function SessionsPage() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {s.name || s.id.substring(0, 12)}
+                    {s.name || (s.id ? s.id.substring(0, 12) : "Session")}
                   </span>
                 </div>
                 <div style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 16 }}>
@@ -431,7 +456,7 @@ export default function SessionsPage() {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {s.initialPrompt.substring(0, 60)}{s.initialPrompt.length > 60 ? "..." : ""}
+                  {(s.initialPrompt ?? "").substring(0, 60)}{(s.initialPrompt ?? "").length > 60 ? "..." : ""}
                 </div>
                 {/* Remove button */}
                 {["completed", "failed", "terminated", "disconnected"].includes(s.status) && (

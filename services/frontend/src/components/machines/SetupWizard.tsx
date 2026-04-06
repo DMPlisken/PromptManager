@@ -210,8 +210,20 @@ export default function SetupWizard({ onClose, onComplete }: SetupWizardProps) {
     }
   }, []);
 
+  const handleCancel = useCallback(async () => {
+    // Clean up the pending machine record if a pairing code was generated
+    if (pairingCode?.machine_id && !pairedMachine) {
+      try {
+        await api.deleteMachine(pairingCode.machine_id);
+      } catch {
+        // Best effort cleanup — ignore errors (e.g., already paired or deleted)
+      }
+    }
+    onClose();
+  }, [pairingCode, pairedMachine, onClose]);
+
   const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) onClose();
+    if (e.target === e.currentTarget) handleCancel();
   };
 
   const serverHost = window.location.hostname || "localhost";
@@ -293,7 +305,7 @@ export default function SetupWizard({ onClose, onComplete }: SetupWizardProps) {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button onClick={onClose} style={btnStyle("secondary")}>Cancel</button>
+              <button onClick={handleCancel} style={btnStyle("secondary")}>Cancel</button>
               <button
                 onClick={handleGeneratePairingCode}
                 style={{ ...btnStyle("primary"), opacity: platform ? 1 : 0.5 }}
@@ -522,7 +534,7 @@ Do all steps. Report success or any errors.`, "claudeprompt")}
 
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <button onClick={() => setStep("instructions")} style={btnStyle("secondary")}>Back</button>
-              <button onClick={onClose} style={btnStyle("secondary")}>Cancel</button>
+              <button onClick={handleCancel} style={btnStyle("secondary")}>Cancel</button>
             </div>
           </>
         )}

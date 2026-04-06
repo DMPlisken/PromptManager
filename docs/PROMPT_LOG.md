@@ -76,6 +76,10 @@
 
 > update the manual again and explain very detailed with screenshots (click enlarge) every step from setting up a new client machine until having a claude code cli session running on this machine and executing the tasks defined and assigned.
 
+### 2026-04-07 — Comprehensive E2E testing, 10 UX iterations, overnight improvement run (`feature/claude-orchestrator`)
+
+> do a very comprehensive e2e testing with playwright of all the steps mentioned in docs/machine-setup-guide.html and perform every step through the frontend. fix all issues if you find any and do a deep analysis by an ux/ui expert and get recommendations for improvements. document all steps with real screenshots (click enlarge) and all feedback with recommendations as interactive html. implement all recommendations and redo the complete e2e testing as described before. then do again the deep analysis by the ux/ui expert. redo these iterations 10 times. do not stop before this is finished.
+
 ### 2026-04-05 12:00 — Create interactive HTML machine setup guide with high-fidelity mockups (`feature/claude-orchestrator`)
 
 > Create an interactive HTML guide at `/Users/cubev/01_Repositories/PromptManager-worktrees/claude-orchestrator/docs/machine-setup-guide.html` that serves as a detailed visual walkthrough for setting up a client machine and running Claude Code sessions through PromptFlow. This guide should contain **high-fidelity mockup screenshots** of every screen in the workflow, rendered as styled HTML/CSS that looks exactly like the actual app (dark purple theme). Each "screenshot" is clickable to enlarge (lightbox effect). [Full specification with 15 steps, design requirements, mockup quality requirements, and detailed content for each step]

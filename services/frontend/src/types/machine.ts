@@ -37,6 +37,7 @@ export interface PairingCode {
   code: string;
   api_key: string;
   expires_at: string;
+  machine_id: number;
 }
 
 // Machine store state

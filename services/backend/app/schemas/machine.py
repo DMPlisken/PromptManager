@@ -67,6 +67,7 @@ class PairingCodeResponse(BaseModel):
     code: str
     api_key: str  # Plain-text key, only shown once
     expires_at: datetime
+    machine_id: int  # ID of the placeholder machine record (for cleanup on cancel)
 
 
 class PairingRequest(BaseModel):

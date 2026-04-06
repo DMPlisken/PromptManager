@@ -6,6 +6,7 @@ import type { PromptGroup } from "../types";
 import { useAllPendingApprovals, useSessionSelector } from "../stores/sessionStore";
 import { useMachineStats } from "../stores/machineStore";
 import ConnectionStatus from "./session/ConnectionStatus";
+import ErrorBoundary from "./ErrorBoundary";
 
 export default function Layout({ children, onHelp }: { children: ReactNode; onHelp?: () => void }) {
   const [groups, setGroups] = useState<PromptGroup[]>([]);
@@ -274,7 +275,9 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
 
       {/* Main */}
       <main style={{ flex: 1, overflowY: "auto", padding: 24 }}>
-        {children}
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
       </main>
 
       {/* Import Preview Modal */}

@@ -187,7 +187,7 @@ export default function MachineCard({ machine, onEdit, onRemove }: MachineCardPr
             fontSize: 20, fontWeight: 700, letterSpacing: "0.15em",
             color: "var(--accent)", fontFamily: "monospace",
           }}>
-            {machine.machine_uuid.substring(0, 6).toUpperCase()}
+            {(machine.machine_uuid ?? "").substring(0, 6).toUpperCase()}
           </div>
         </div>
       )}

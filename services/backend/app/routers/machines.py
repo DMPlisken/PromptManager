@@ -168,10 +168,11 @@ async def generate_pairing_code(db: AsyncSession = Depends(get_db)):
     )
     db.add(machine)
     await db.commit()
+    await db.refresh(machine)
 
-    logger.info("pairing_code_generated", code=code, expires_at=expires_at.isoformat())
+    logger.info("pairing_code_generated", code=code, machine_id=machine.id, expires_at=expires_at.isoformat())
 
-    return PairingCodeResponse(code=code, api_key=api_key, expires_at=expires_at)
+    return PairingCodeResponse(code=code, api_key=api_key, expires_at=expires_at, machine_id=machine.id)
 
 
 @router.post("/pair", response_model=PairingResponse)
@@ -475,10 +476,38 @@ async def test_machine(machine_id: int, db: AsyncSession = Depends(get_db)):
         )
         messages = result.scalars().all()
 
-        output_text = "\n".join(
-            msg.content for msg in messages
-            if msg.content
-        )
+        # Extract text from both msg.content and msg.metadata_json.
+        # The stream-json output from Claude may store the actual response
+        # in metadata_json rather than content (which can be empty for some
+        # message types).
+        output_parts: list[str] = []
+        for msg in messages:
+            # First try the content field
+            if msg.content and msg.content.strip():
+                output_parts.append(msg.content)
+            # Also check metadata_json for response text
+            elif msg.metadata_json:
+                meta = msg.metadata_json
+                # stream-json format: {"type": "assistant", "message": {"content": [{"type": "text", "text": "..."}]}}
+                if isinstance(meta, dict):
+                    # Direct text field
+                    if "text" in meta and meta["text"]:
+                        output_parts.append(str(meta["text"]))
+                    # Nested message.content array (Claude stream-json format)
+                    elif "message" in meta and isinstance(meta["message"], dict):
+                        for block in meta["message"].get("content", []):
+                            if isinstance(block, dict) and block.get("type") == "text" and block.get("text"):
+                                output_parts.append(str(block["text"]))
+                    # Content array at top level
+                    elif "content" in meta and isinstance(meta["content"], list):
+                        for block in meta["content"]:
+                            if isinstance(block, dict) and block.get("type") == "text" and block.get("text"):
+                                output_parts.append(str(block["text"]))
+                    # result field (tool results, etc.)
+                    elif "result" in meta and meta["result"]:
+                        output_parts.append(str(meta["result"]))
+
+        output_text = "\n".join(output_parts)
 
         return {
             "success": session.status == SessionStatus.COMPLETED.value,
