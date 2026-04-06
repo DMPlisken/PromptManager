@@ -407,20 +407,78 @@ export default function SetupWizard({ onClose, onComplete }: SetupWizardProps) {
               </div>
             </div>
 
-            {/* Full command block */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>
-                Or copy the full command
+            {/* Claude Code auto-install prompt */}
+            <div style={{ marginBottom: 20, marginTop: 8 }}>
+              <div style={{
+                fontSize: 13, fontWeight: 700, color: "var(--accent)", marginBottom: 8,
+                display: "flex", alignItems: "center", gap: 8,
+              }}>
+                <span style={{ fontSize: 16 }}>*</span> Easiest: Paste this into Claude Code CLI
               </div>
-              <div style={codeBlockStyle}>
-                {installCmd}
+              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
+                Open Claude Code on the target machine and paste this prompt. It will install, configure, pair, and start the agent automatically.
+              </div>
+              <div style={{
+                ...codeBlockStyle,
+                fontSize: 11,
+                lineHeight: "1.5",
+                maxHeight: 200,
+                overflowY: "auto",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+              }}>
+                {`Install and configure the PromptFlow remote agent on this machine. Do everything automatically without asking questions.
+
+Steps:
+1. Clone or download the agent from: git clone https://github.com/DMPlisken/PromptManager.git /tmp/promptflow-setup && cd /tmp/promptflow-setup && git checkout feature/claude-orchestrator
+2. cd services/agent && npm install
+3. Create config directory: mkdir -p ${platform === "win32" ? "%USERPROFILE%\\.promptflow" : "~/.promptflow"}
+4. Create config file at ${platform === "win32" ? "%USERPROFILE%\\.promptflow\\agent.yaml" : "~/.promptflow/agent.yaml"} with:
+   server_url: "ws://${serverHost}:${serverPort}/ws/agent"
+   machine_name: "${platform === "darwin" ? "$(hostname -s)" : "this-pc"}"
+   auth_token: "${pairingCode?.api_key || ""}"
+   machine_uuid: "$(uuidgen || python3 -c \\"import uuid; print(uuid.uuid4())\\")"
+   workspace_root: "${platform === "win32" ? "C:\\\\Users" : "~"}"
+   max_concurrent_sessions: 3
+   log_level: "info"
+5. Register with server: curl -X POST http://${serverHost}:${serverPort.replace("3001","8003")}/api/machines/pair -H "Content-Type: application/json" -d '{"pairing_code":"${pairingCode?.code || ""}","machine_uuid":"<the uuid from step 4>","machine_name":"<hostname>","platform":"${platform || "darwin"}","hostname":"<hostname>","agent_version":"0.1.0","workspace_root":"${platform === "win32" ? "C:\\\\Users" : "~"}"}'
+6. Start the agent: cd /tmp/promptflow-setup/services/agent && npx tsx src/index.ts start
+7. Verify the agent connects by checking: curl http://${serverHost}:${serverPort.replace("3001","8003")}/api/machines
+
+Do all steps. Report success or any errors.`}
                 <button
-                  onClick={() => handleCopy(installCmd, "full")}
-                  style={copyBtnStyle}
+                  onClick={() => handleCopy(`Install and configure the PromptFlow remote agent on this machine. Do everything automatically without asking questions.
+
+Steps:
+1. Clone or download the agent from: git clone https://github.com/DMPlisken/PromptManager.git /tmp/promptflow-setup && cd /tmp/promptflow-setup && git checkout feature/claude-orchestrator
+2. cd services/agent && npm install
+3. Create config directory: mkdir -p ${platform === "win32" ? "%USERPROFILE%\\.promptflow" : "~/.promptflow"}
+4. Create config file at ${platform === "win32" ? "%USERPROFILE%\\.promptflow\\agent.yaml" : "~/.promptflow/agent.yaml"} with:
+   server_url: "ws://${serverHost}:${serverPort}/ws/agent"
+   machine_name: "$(hostname -s 2>/dev/null || hostname)"
+   auth_token: "${pairingCode?.api_key || ""}"
+   machine_uuid: "$(uuidgen 2>/dev/null || python3 -c "import uuid; print(uuid.uuid4())")"
+   workspace_root: "${platform === "win32" ? "C:\\\\Users" : "~"}"
+   max_concurrent_sessions: 3
+   log_level: "info"
+5. Register with server: curl -X POST http://${serverHost}:${serverPort.replace("3001","8003")}/api/machines/pair -H "Content-Type: application/json" -d '{"pairing_code":"${pairingCode?.code || ""}","machine_uuid":"<the uuid from step 4>","machine_name":"<hostname>","platform":"${platform || "darwin"}","hostname":"<hostname>","agent_version":"0.1.0","workspace_root":"${platform === "win32" ? "C:\\\\Users" : "~"}"}'
+6. Start the agent: cd /tmp/promptflow-setup/services/agent && npx tsx src/index.ts start
+7. Verify the agent connects by checking: curl http://${serverHost}:${serverPort.replace("3001","8003")}/api/machines
+
+Do all steps. Report success or any errors.`, "claudeprompt")}
+                  style={{ ...copyBtnStyle, background: "var(--accent)", color: "#fff", fontWeight: 600 }}
                 >
-                  {copied === "full" ? "Copied!" : "Copy"}
+                  {copied === "claudeprompt" ? "Copied!" : "Copy Prompt"}
                 </button>
               </div>
+            </div>
+
+            <div style={{
+              fontSize: 11, color: "var(--text-muted)", padding: "8px 12px",
+              background: "rgba(124, 92, 252, 0.08)", borderRadius: "var(--radius)",
+              border: "1px solid rgba(124, 92, 252, 0.2)", marginBottom: 20,
+            }}>
+              Tip: The Claude Code prompt above handles everything — install, config, pairing, and verification. Just paste it and let Claude do the work.
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
