@@ -128,7 +128,7 @@ export default function MachineCard({ machine, onEdit, onRemove }: MachineCardPr
 
   const health = machine.last_health;
   const sessionLoad = health
-    ? `${health.active_sessions}/${machine.max_concurrent_sessions}`
+    ? `${health.activeSessions}/${machine.max_concurrent_sessions}`
     : `0/${machine.max_concurrent_sessions}`;
 
   return (
@@ -201,13 +201,13 @@ export default function MachineCard({ machine, onEdit, onRemove }: MachineCardPr
             <div style={metricBarContainer}>
               <div style={{
                 height: "100%", borderRadius: 2,
-                width: `${Math.min(health.cpu_percent, 100)}%`,
-                background: barColor(health.cpu_percent),
+                width: `${Math.min(health.cpuPercent, 100)}%`,
+                background: barColor(health.cpuPercent),
                 transition: "width 0.3s",
               }} />
             </div>
             <span style={{ fontSize: 11, color: "var(--text-muted)", width: 36, textAlign: "right", flexShrink: 0 }}>
-              {Math.round(health.cpu_percent)}%
+              {Math.round(health.cpuPercent)}%
             </span>
           </div>
 
@@ -217,13 +217,13 @@ export default function MachineCard({ machine, onEdit, onRemove }: MachineCardPr
             <div style={metricBarContainer}>
               <div style={{
                 height: "100%", borderRadius: 2,
-                width: `${Math.min(health.memory_percent, 100)}%`,
-                background: barColor(health.memory_percent),
+                width: `${Math.min(health.memoryPercent, 100)}%`,
+                background: barColor(health.memoryPercent),
                 transition: "width 0.3s",
               }} />
             </div>
             <span style={{ fontSize: 11, color: "var(--text-muted)", width: 36, textAlign: "right", flexShrink: 0 }}>
-              {Math.round(health.memory_percent)}%
+              {Math.round(health.memoryPercent)}%
             </span>
           </div>
 
@@ -233,8 +233,8 @@ export default function MachineCard({ machine, onEdit, onRemove }: MachineCardPr
             <div style={metricBarContainer}>
               <div style={{
                 height: "100%", borderRadius: 2,
-                width: `${machine.max_concurrent_sessions > 0 ? Math.min((health.active_sessions / machine.max_concurrent_sessions) * 100, 100) : 0}%`,
-                background: barColor(machine.max_concurrent_sessions > 0 ? (health.active_sessions / machine.max_concurrent_sessions) * 100 : 0),
+                width: `${machine.max_concurrent_sessions > 0 ? Math.min((health.activeSessions / machine.max_concurrent_sessions) * 100, 100) : 0}%`,
+                background: barColor(machine.max_concurrent_sessions > 0 ? (health.activeSessions / machine.max_concurrent_sessions) * 100 : 0),
                 transition: "width 0.3s",
               }} />
             </div>

@@ -166,11 +166,11 @@ export default function SessionCreateModal({ initialPrompt, onConfirm, onCancel 
                 <option value="auto">Auto (least loaded)</option>
                 {machines.map((m) => {
                   const health = m.last_health;
-                  const atCapacity = health ? health.active_sessions >= m.max_concurrent_sessions : false;
+                  const atCapacity = health ? health.activeSessions >= m.max_concurrent_sessions : false;
                   const isOffline = m.status !== "online";
                   const disabled = isOffline || atCapacity;
                   const sessionInfo = health
-                    ? `${health.active_sessions}/${m.max_concurrent_sessions}`
+                    ? `${health.activeSessions}/${m.max_concurrent_sessions}`
                     : `0/${m.max_concurrent_sessions}`;
                   const label = `${platformIcon(m.platform)} ${m.name} - ${sessionInfo} sessions${isOffline ? " (offline)" : atCapacity ? " (full)" : ""}`;
                   return (

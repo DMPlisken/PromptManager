@@ -23,13 +23,14 @@ export interface Machine {
 }
 
 export interface MachineHealth {
-  cpu_percent: number;
-  memory_percent: number;
-  memory_used_mb: number;
-  memory_total_mb: number;
-  disk_free_gb: number;
-  active_sessions: number;
-  uptime_seconds: number;
+  cpuPercent: number;
+  memoryPercent: number;
+  memoryUsedMb: number;
+  memoryTotalMb: number;
+  diskFreeGb: number;
+  activeSessions: number;
+  maxSessions?: number;
+  uptimeSeconds?: number;
 }
 
 export interface PairingCode {
