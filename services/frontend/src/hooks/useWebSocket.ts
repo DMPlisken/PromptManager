@@ -1,26 +1,27 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { sessionStore } from "../stores/sessionStore";
 import type { WsServerMessage, SessionMessage } from "../types/session";
 
 const WS_URL = `ws://${window.location.host}/ws/orchestrator`;
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 15000, 30000];
 const HEARTBEAT_INTERVAL = 15000;
+const MAX_RECONNECT_ATTEMPTS = 10;
 
 export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttempt = useRef(0);
-  const reconnectTimer = useRef<number>();
-  const heartbeatTimer = useRef<number>();
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout>>();
+  const heartbeatTimer = useRef<ReturnType<typeof setInterval>>();
   const messageBuffer = useRef<SessionMessage[]>([]);
   const rafId = useRef<number | null>(null);
+  const mountedRef = useRef(true);
 
-  const flushMessages = useCallback(() => {
+  function flushMessages() {
     if (messageBuffer.current.length === 0) return;
     const batch = messageBuffer.current;
     messageBuffer.current = [];
     rafId.current = null;
 
-    // Group by sessionId for efficient dispatch
     const grouped: Record<string, SessionMessage[]> = {};
     for (const msg of batch) {
       (grouped[msg.sessionId] ??= []).push(msg);
@@ -28,164 +29,173 @@ export function useWebSocket() {
     for (const [sessionId, messages] of Object.entries(grouped)) {
       sessionStore.dispatch({ type: "MESSAGES_APPENDED", sessionId, messages });
     }
-  }, []);
+  }
 
-  const scheduleFlush = useCallback(() => {
+  function scheduleFlush() {
     if (rafId.current !== null) return;
     if (document.hidden) {
       rafId.current = window.setTimeout(flushMessages, 100) as unknown as number;
     } else {
       rafId.current = requestAnimationFrame(flushMessages);
     }
-  }, [flushMessages]);
+  }
 
-  const handleMessage = useCallback(
-    (event: MessageEvent) => {
-      try {
-        const msg: WsServerMessage = JSON.parse(event.data);
+  function handleMessage(event: MessageEvent) {
+    try {
+      const msg = JSON.parse(event.data) as WsServerMessage;
 
-        switch (msg.type) {
-          case "session.started":
-            sessionStore.dispatch({
-              type: "SESSION_STATUS_CHANGED",
-              sessionId: msg.sessionId,
-              status: "running",
-            });
-            break;
+      switch (msg.type) {
+        case "session.started":
+          sessionStore.dispatch({
+            type: "SESSION_STATUS_CHANGED",
+            sessionId: msg.sessionId,
+            status: "running",
+          });
+          break;
 
-          case "session.message": {
-            const sessionMsg: SessionMessage = {
-              id: `${msg.sessionId}-${msg.sequence}`,
-              sessionId: msg.sessionId,
-              sequence: msg.sequence,
-              role: msg.message.role || "assistant",
-              type: msg.message.type || "text",
-              content: msg.message.content || "",
-              timestamp: new Date().toISOString(),
-              costUsd: msg.message.costUsd,
-            };
-            messageBuffer.current.push(sessionMsg);
-            scheduleFlush();
-            break;
-          }
-
-          case "session.approval_required":
-            sessionStore.dispatch({
-              type: "APPROVAL_REQUESTED",
-              approval: msg.toolUse,
-            });
-            break;
-
-          case "session.completed":
-            sessionStore.dispatch({
-              type: "SESSION_COMPLETED",
-              sessionId: msg.sessionId,
-              result: msg.result,
-            });
-            break;
-
-          case "session.error":
-            sessionStore.dispatch({
-              type: "SESSION_STATUS_CHANGED",
-              sessionId: msg.sessionId,
-              status: "failed",
-              error: msg.error.message,
-            });
-            break;
-
-          case "session.status_changed":
-            sessionStore.dispatch({
-              type: "SESSION_STATUS_CHANGED",
-              sessionId: msg.sessionId,
-              status: msg.status,
-            });
-            break;
-
-          case "system.sidecar_status":
-            sessionStore.dispatch({
-              type: "SET_SIDECAR_STATUS",
-              status: msg.status,
-            });
-            break;
-
-          case "protocol.pong":
-            // Heartbeat acknowledged
-            break;
+        case "session.message": {
+          const sessionMsg: SessionMessage = {
+            id: `${msg.sessionId}-${msg.sequence}`,
+            sessionId: msg.sessionId,
+            sequence: msg.sequence,
+            role: msg.message.role || "assistant",
+            type: msg.message.type || "text",
+            content: msg.message.content || "",
+            timestamp: new Date().toISOString(),
+            costUsd: msg.message.costUsd,
+          };
+          messageBuffer.current.push(sessionMsg);
+          scheduleFlush();
+          break;
         }
-      } catch (e) {
-        console.error("WS message parse error:", e);
-      }
-    },
-    [scheduleFlush]
-  );
 
-  const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+        case "session.approval_required":
+          sessionStore.dispatch({
+            type: "APPROVAL_REQUESTED",
+            approval: msg.toolUse,
+          });
+          break;
+
+        case "session.completed":
+          sessionStore.dispatch({
+            type: "SESSION_COMPLETED",
+            sessionId: msg.sessionId,
+            result: msg.result,
+          });
+          break;
+
+        case "session.error":
+          sessionStore.dispatch({
+            type: "SESSION_STATUS_CHANGED",
+            sessionId: msg.sessionId,
+            status: "failed",
+            error: msg.error.message,
+          });
+          break;
+
+        case "session.status_changed":
+          sessionStore.dispatch({
+            type: "SESSION_STATUS_CHANGED",
+            sessionId: msg.sessionId,
+            status: msg.status,
+          });
+          break;
+
+        case "system.sidecar_status":
+          sessionStore.dispatch({
+            type: "SET_SIDECAR_STATUS",
+            status: msg.status,
+          });
+          break;
+
+        case "protocol.pong":
+          break;
+      }
+    } catch (e) {
+      console.error("WS message parse error:", e);
+    }
+  }
+
+  function connect() {
+    if (!mountedRef.current) return;
+    if (wsRef.current?.readyState === WebSocket.OPEN ||
+        wsRef.current?.readyState === WebSocket.CONNECTING) return;
 
     sessionStore.dispatch({ type: "SET_WS_STATUS", status: "connecting" });
 
-    const ws = new WebSocket(WS_URL);
-    wsRef.current = ws;
+    try {
+      const ws = new WebSocket(WS_URL);
+      wsRef.current = ws;
 
-    ws.onopen = () => {
-      reconnectAttempt.current = 0;
-      sessionStore.dispatch({ type: "SET_WS_STATUS", status: "connected" });
+      ws.onopen = () => {
+        reconnectAttempt.current = 0;
+        sessionStore.dispatch({ type: "SET_WS_STATUS", status: "connected" });
 
-      // Start heartbeat
-      heartbeatTimer.current = window.setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: "protocol.ping", timestamp: Date.now() }));
+        heartbeatTimer.current = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "protocol.ping", timestamp: Date.now() }));
+          }
+        }, HEARTBEAT_INTERVAL);
+      };
+
+      ws.onmessage = handleMessage;
+
+      ws.onclose = () => {
+        clearInterval(heartbeatTimer.current);
+
+        if (!mountedRef.current) return;
+
+        if (reconnectAttempt.current >= MAX_RECONNECT_ATTEMPTS) {
+          sessionStore.dispatch({ type: "SET_WS_STATUS", status: "disconnected" });
+          return;
         }
-      }, HEARTBEAT_INTERVAL);
-    };
 
-    ws.onmessage = handleMessage;
+        sessionStore.dispatch({ type: "SET_WS_STATUS", status: "reconnecting" });
 
-    ws.onclose = () => {
-      clearInterval(heartbeatTimer.current);
-
-      // Cap reconnect attempts to avoid flooding
-      if (reconnectAttempt.current >= 10) {
-        sessionStore.dispatch({ type: "SET_WS_STATUS", status: "disconnected" });
-        return;
-      }
-
-      sessionStore.dispatch({ type: "SET_WS_STATUS", status: "reconnecting" });
-
-      const delay =
-        RECONNECT_DELAYS[
+        const delay = RECONNECT_DELAYS[
           Math.min(reconnectAttempt.current, RECONNECT_DELAYS.length - 1)
         ];
-      reconnectAttempt.current++;
-      reconnectTimer.current = window.setTimeout(connect, delay);
-    };
+        reconnectAttempt.current++;
+        reconnectTimer.current = setTimeout(connect, delay);
+      };
 
-    ws.onerror = () => {
-      ws.close();
-    };
-  }, [handleMessage]);
-
-  const send = useCallback((message: object) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(message));
+      ws.onerror = () => {
+        ws.close();
+      };
+    } catch (e) {
+      console.error("WS connect error:", e);
+      sessionStore.dispatch({ type: "SET_WS_STATUS", status: "disconnected" });
     }
-  }, []);
+  }
 
-  const disconnect = useCallback(() => {
+  function disconnect() {
+    mountedRef.current = false;
     clearTimeout(reconnectTimer.current);
     clearInterval(heartbeatTimer.current);
     if (rafId.current !== null) {
       cancelAnimationFrame(rafId.current);
     }
-    reconnectAttempt.current = Infinity; // Prevent reconnect
-    wsRef.current?.close();
+    if (wsRef.current) {
+      wsRef.current.onclose = null; // prevent reconnect on intentional close
+      wsRef.current.close();
+      wsRef.current = null;
+    }
     sessionStore.dispatch({ type: "SET_WS_STATUS", status: "disconnected" });
-  }, []);
+  }
 
+  function send(message: object) {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(message));
+    }
+  }
+
+  // Connect once on mount, disconnect on unmount
   useEffect(() => {
+    mountedRef.current = true;
     connect();
     return disconnect;
-  }, [connect, disconnect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return { send, disconnect, reconnect: connect };
 }
