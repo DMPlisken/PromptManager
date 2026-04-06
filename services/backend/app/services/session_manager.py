@@ -169,6 +169,10 @@ class SessionManager:
                 f"Failed to dispatch session to machine '{machine.name}'"
             )
 
+        # Mark as running — the agent will update status via WS messages
+        session.status = SessionStatus.RUNNING.value
+        await db.commit()
+
     # ------------------------------------------------------------------
     # Background stream relay
     # ------------------------------------------------------------------

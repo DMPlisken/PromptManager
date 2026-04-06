@@ -437,12 +437,17 @@ async def test_machine(machine_id: int, db: AsyncSession = Depends(get_db)):
 
     test_prompt = 'Respond with exactly: "PromptFlow agent test successful! Machine is connected and Claude Code CLI is working." Do not add anything else.'
 
+    # Use a safe working directory
+    wd = machine.workspace_root or "/tmp"
+    if wd == "~":
+        wd = "/tmp"
+
     try:
         # Create a test session
         session = await session_manager.create_session(
             db=db,
             prompt=test_prompt,
-            working_directory=machine.workspace_root or "/tmp",
+            working_directory=wd,
             model="haiku",
             machine_id=machine.id,
             name=f"Test: {machine.name}",

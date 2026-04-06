@@ -196,7 +196,7 @@ class AgentConnectionManager:
         """Process a message received from a connected agent."""
         msg_type = msg.get("type", "")
 
-        if msg_type == "agent.heartbeat":
+        if msg_type in ("agent.heartbeat", "agent.health"):
             await self._handle_heartbeat(machine_uuid, msg, db)
 
         elif msg_type == "agent.session.output":
