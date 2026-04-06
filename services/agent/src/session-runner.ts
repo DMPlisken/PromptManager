@@ -239,7 +239,7 @@ export class SessionRunner extends EventEmitter {
 // ---------------------------------------------------------------------------
 
 function buildCliArgs(cmd: ServerSessionCreate): string[] {
-  const args: string[] = ["--print", "--output-format", "stream-json"];
+  const args: string[] = ["--print", "--output-format", "stream-json", "--verbose"];
 
   if (cmd.model) {
     args.push("--model", cmd.model);

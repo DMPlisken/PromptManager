@@ -148,6 +148,7 @@ class SessionManager:
             "--print",
             "--output-format",
             "stream-json",
+            "--verbose",
             "--model",
             session.model,
             "--max-turns",
