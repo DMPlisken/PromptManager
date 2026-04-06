@@ -14,15 +14,36 @@ interface TaskGroup {
   executions: TaskExecution[];
 }
 
+const HISTORY_LS_KEY = "promptflow_history_view";
+
+function loadHistoryState(): Record<string, any> {
+  try { return JSON.parse(localStorage.getItem(HISTORY_LS_KEY) || "{}"); } catch { return {}; }
+}
+function saveHistoryState(patch: Record<string, any>) {
+  try { localStorage.setItem(HISTORY_LS_KEY, JSON.stringify({ ...loadHistoryState(), ...patch })); } catch { /* */ }
+}
+
 export default function HistoryPage({ onHelp }: { onHelp?: (id: string) => void }) {
+  const saved = loadHistoryState();
   const [executions, setExecutions] = useState<TaskExecution[]>([]);
   const [groups, setGroups] = useState<PromptGroup[]>([]);
   const [filterGroup, setFilterGroup] = useState<number | undefined>();
   const [expanded, setExpanded] = useState<number | null>(null);
-  const [collapsedTasks, setCollapsedTasks] = useState<Set<string>>(new Set());
+  const [collapsedTasks, _setCollapsedTasks] = useState<Set<string>>(new Set(saved.collapsedTasks || []));
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortDir, _setSortDir] = useState<"desc" | "asc">(saved.sortDir || "desc");
   const [execImages, setExecImages] = useState<Record<number, Array<{ original_name: string; file_path: string; url: string | null }>>>({});
   const [fullImageUrl, setFullImageUrl] = useState<string | null>(null);
   const toast = useToast();
+
+  const setCollapsedTasks = (updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    _setCollapsedTasks((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      saveHistoryState({ collapsedTasks: Array.from(next) });
+      return next;
+    });
+  };
+  const setSortDir = (v: "desc" | "asc") => { _setSortDir(v); saveHistoryState({ sortDir: v }); };
 
   const load = async () => {
     try {
@@ -37,7 +58,7 @@ export default function HistoryPage({ onHelp }: { onHelp?: (id: string) => void 
 
   useEffect(() => { load(); }, [filterGroup]);
 
-  // Group executions by task
+  // Group executions by task, apply search and sort
   const taskGroups = useMemo((): TaskGroup[] => {
     const map = new Map<string, TaskGroup>();
     for (const ex of executions) {
@@ -51,15 +72,21 @@ export default function HistoryPage({ onHelp }: { onHelp?: (id: string) => void 
       }
       map.get(key)!.executions.push(ex);
     }
-    // Tasks with executions first (by most recent), ungrouped last
-    const result = Array.from(map.values());
+    let result = Array.from(map.values());
+    // Search filter on task name
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((tg) => tg.taskName.toLowerCase().includes(q));
+    }
+    // Sort by most recent execution date
     result.sort((a, b) => {
       if (a.taskId === null) return 1;
       if (b.taskId === null) return -1;
-      return new Date(b.executions[0].created_at).getTime() - new Date(a.executions[0].created_at).getTime();
+      const cmp = new Date(b.executions[0].created_at).getTime() - new Date(a.executions[0].created_at).getTime();
+      return sortDir === "desc" ? cmp : -cmp;
     });
     return result;
-  }, [executions]);
+  }, [executions, searchQuery, sortDir]);
 
   const toggleTaskCollapse = (key: string) => {
     setCollapsedTasks((prev) => {
@@ -99,19 +126,32 @@ export default function HistoryPage({ onHelp }: { onHelp?: (id: string) => void 
 
   return (
     <div style={{ maxWidth: 960 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, gap: 10, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <h2 style={{ fontSize: 22, fontWeight: 700 }}>Prompt History</h2>
           {onHelp && <HelpButton onClick={() => onHelp("history")} />}
         </div>
-        <select
-          value={filterGroup ?? ""}
-          onChange={(e) => setFilterGroup(e.target.value ? Number(e.target.value) : undefined)}
-          style={inputStyle}
-        >
-          <option value="">All Groups</option>
-          {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-        </select>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search tasks..."
+            style={{ ...inputStyle, width: 180 }}
+          />
+          <button onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")} style={{
+            padding: "6px 12px", fontSize: 12, background: "var(--bg-card)",
+            border: "1px solid var(--border)", borderRadius: "var(--radius)",
+            color: "var(--text-muted)", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+          }}>Date {sortDir === "desc" ? "\u2193" : "\u2191"}</button>
+          <select
+            value={filterGroup ?? ""}
+            onChange={(e) => setFilterGroup(e.target.value ? Number(e.target.value) : undefined)}
+            style={inputStyle}
+          >
+            <option value="">All Groups</option>
+            {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+          </select>
+        </div>
       </div>
 
       {executions.length === 0 ? (
