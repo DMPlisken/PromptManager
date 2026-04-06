@@ -55,7 +55,8 @@ export default function ImageAttachments({ taskId, templateId, onHelp }: ImageAt
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (!file.type.startsWith("image/")) continue;
-      const folder = baseFolder.endsWith("\\") || baseFolder.endsWith("/") ? baseFolder : baseFolder + "\\";
+      const sep = baseFolder.includes("/") ? "/" : "\\";
+      const folder = baseFolder.endsWith("\\") || baseFolder.endsWith("/") ? baseFolder : baseFolder + sep;
       const filePath = folder + file.name;
       try {
         await api.uploadTaskImage(taskId, templateId, file, filePath, images.length + i);
