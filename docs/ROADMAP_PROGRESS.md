@@ -157,10 +157,24 @@
 - [x] Agent: Example config file (promptflow-agent.yaml.example)
 - [x] Agent: README with install, setup, and platform notes (README.md)
 
+### Completed (Frontend — Multi-Machine UI)
+- [x] Frontend: Machine TypeScript types (src/types/machine.ts) — Machine, MachineHealth, MachineStatus, MachinePlatform, PairingCode, MachineState, MachineAction
+- [x] Frontend: Machine store with useSyncExternalStore (src/stores/machineStore.ts) — singleton store, reducer, cached selectors: useMachines, useMachine, useOnlineMachines, useMachineStats
+- [x] Frontend: API client extended with machine endpoints (src/api/client.ts) — getMachines, getMachine, createMachine, updateMachine, deleteMachine, generatePairingCode, getInstallScript
+- [x] Frontend: MachineCard component (src/components/machines/MachineCard.tsx) — color-coded border, platform badge, status dot, health bars (CPU/MEM/SESS), relative time, edit/remove actions
+- [x] Frontend: MachineEditModal component (src/components/machines/MachineEditModal.tsx) — name, color picker (8 presets), workspace root, max sessions, remove with confirmation
+- [x] Frontend: SetupWizard component (src/components/machines/SetupWizard.tsx) — 5-step modal (platform/pairing/instructions/waiting/done), pairing code generation, copyable install commands, auto-detection polling, step indicator
+- [x] Frontend: MachinesPage (src/pages/MachinesPage.tsx) — stats bar (online/offline/pairing), machine card grid, empty state, wizard + edit modal integration
+- [x] Frontend: Machine selector in SessionCreateModal — dropdown with online machines, session load display, auto (least loaded) default, color badge for selected machine
+- [x] Frontend: Layout updated — Machines nav link with online count and offline alert badge
+- [x] Frontend: App.tsx — /machines route added
+- [x] Frontend: WebSocket handler updated — machine.status_changed and machine.registered message handling
+- [x] Frontend: CSS variables added — --machine-online, --machine-offline, --machine-pairing
+- [x] Frontend: SessionCreateRequest type updated — machineId field added
+- [x] Frontend: WsServerMessage type updated — machine.status_changed and machine.registered variants
+
 ### Pending
 - [ ] Backend: Tests for machine CRUD, pairing flow, agent WebSocket, agent manager
-- [ ] Frontend: Machine management UI (list, add, pair, health dashboard)
-- [ ] Frontend: Machine selector in session creation modal
 
 ### Pending (Future Enhancements)
 - [ ] Frontend: Markdown rendering for assistant messages

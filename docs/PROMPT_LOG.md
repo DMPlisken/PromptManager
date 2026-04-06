@@ -67,3 +67,7 @@
 ### 2026-04-05 — Create Node.js CLI agent package for remote orchestration (`feature/claude-orchestrator`)
 
 > Create a complete Node.js CLI agent package at `/Users/cubev/01_Repositories/PromptManager-worktrees/claude-orchestrator/services/agent/` that runs on developer workstations (Mac and Windows) and connects to the PromptFlow server. [Detailed spec: WebSocket client with reconnection, Claude CLI subprocess spawning with stream-json output, system health reporting, HTTP pairing flow, commander CLI with pair/start/status/config commands, TypeScript with CommonJS, cross-platform support]
+
+### 2026-04-05 — Build complete frontend for multi-machine management (`feature/claude-orchestrator`)
+
+> Build the complete frontend for multi-machine management in PromptFlow. Work in `/Users/cubev/01_Repositories/PromptManager-worktrees/claude-orchestrator/services/frontend/`. [12-task specification: Machine types, machineStore, API client endpoints, MachinesPage with stats/cards/wizard, MachineCard with health bars, SetupWizard 5-step modal, MachineEditModal, SessionCreateModal machine selector, Layout machines nav link, App.tsx route, useWebSocket machine handlers, CSS variables]
