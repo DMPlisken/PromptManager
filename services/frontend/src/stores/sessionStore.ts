@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, useRef, useCallback } from "react";
 import type {
   SessionState,
   SessionAction,
@@ -180,10 +180,24 @@ export function useSessionState(): SessionState {
 }
 
 // Hook: use a selected slice of state (prevents unnecessary re-renders)
+// Caches the selector result by state identity to avoid infinite re-renders
+// when selectors return new object/array references.
 export function useSessionSelector<T>(selector: (state: SessionState) => T): T {
-  return useSyncExternalStore(sessionStore.subscribe, () =>
-    selector(sessionStore.getState())
-  );
+  const selectorRef = useRef(selector);
+  selectorRef.current = selector;
+  const cachedRef = useRef<{ value: T; stateRef: SessionState } | null>(null);
+
+  const getSnapshot = useCallback(() => {
+    const currentState = sessionStore.getState();
+    if (cachedRef.current && cachedRef.current.stateRef === currentState) {
+      return cachedRef.current.value;
+    }
+    const value = selectorRef.current(currentState);
+    cachedRef.current = { value, stateRef: currentState };
+    return value;
+  }, []);
+
+  return useSyncExternalStore(sessionStore.subscribe, getSnapshot);
 }
 
 // Hook: get dispatch function
