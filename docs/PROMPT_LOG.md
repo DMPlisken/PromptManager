@@ -75,3 +75,7 @@
 ### 2026-04-06 11:30 — Create detailed visual manual with screenshots for machine setup and session workflow (`feature/claude-orchestrator`)
 
 > update the manual again and explain very detailed with screenshots (click enlarge) every step from setting up a new client machine until having a claude code cli session running on this machine and executing the tasks defined and assigned.
+
+### 2026-04-05 12:00 — Create interactive HTML machine setup guide with high-fidelity mockups (`feature/claude-orchestrator`)
+
+> Create an interactive HTML guide at `/Users/cubev/01_Repositories/PromptManager-worktrees/claude-orchestrator/docs/machine-setup-guide.html` that serves as a detailed visual walkthrough for setting up a client machine and running Claude Code sessions through PromptFlow. This guide should contain **high-fidelity mockup screenshots** of every screen in the workflow, rendered as styled HTML/CSS that looks exactly like the actual app (dark purple theme). Each "screenshot" is clickable to enlarge (lightbox effect). [Full specification with 15 steps, design requirements, mockup quality requirements, and detailed content for each step]

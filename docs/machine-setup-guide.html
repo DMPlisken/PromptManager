@@ -1,0 +1,1903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PromptFlow Machine Setup Guide</title>
+<style>
+  /* === Base Reset & Theme === */
+  :root {
+    --bg-primary: #1a1b2e;
+    --bg-secondary: #232440;
+    --bg-card: #2a2b4a;
+    --bg-input: #1e1f3a;
+    --text-primary: #e8e8f0;
+    --text-secondary: #a0a0b8;
+    --text-muted: #6b6b85;
+    --accent: #7c5cfc;
+    --accent-hover: #6a4ae0;
+    --accent-light: rgba(124, 92, 252, 0.15);
+    --border: #3a3b5a;
+    --danger: #e05555;
+    --success: #4caf80;
+    --warning: #e0a030;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --status-running: #4caf80;
+    --status-waiting: #e0a030;
+    --status-completed: #7c5cfc;
+    --status-failed: #e05555;
+    --status-terminated: #6b6b85;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-primary); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* === Guide Layout === */
+  .guide-header {
+    text-align: center;
+    padding: 60px 24px 40px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(124, 92, 252, 0.08) 0%, transparent 100%);
+  }
+  .guide-header h1 {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-bottom: 12px;
+  }
+  .guide-header h1 span { color: var(--accent); }
+  .guide-header p {
+    font-size: 16px;
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .guide-container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  /* === Table of Contents === */
+  .toc {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px 28px;
+    margin: 32px 0 48px;
+  }
+  .toc h2 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+  }
+  .toc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 32px;
+  }
+  .toc a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    color: var(--text-secondary);
+    transition: all 0.15s;
+  }
+  .toc a:hover {
+    background: var(--accent-light);
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .toc-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  /* === Step Section === */
+  .step-section {
+    margin-bottom: 56px;
+    scroll-margin-top: 24px;
+  }
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .step-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .step-title {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .step-description {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+    padding-left: 52px;
+  }
+
+  /* === Mockup Container === */
+  .mockup-wrapper {
+    cursor: pointer;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    position: relative;
+  }
+  .mockup-wrapper:hover {
+    border-color: var(--accent);
+    box-shadow: 0 4px 32px rgba(124, 92, 252, 0.15);
+  }
+  .mockup-hint {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 3px 10px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: rgba(26, 27, 46, 0.85);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 2;
+  }
+  .mockup-wrapper:hover .mockup-hint { opacity: 1; }
+
+  /* === Lightbox === */
+  .lightbox-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+    padding: 24px;
+  }
+  .lightbox-overlay.active { display: flex; }
+  .lightbox-content {
+    max-width: 95vw;
+    max-height: 92vh;
+    overflow: auto;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 48px rgba(0, 0, 0, 0.6);
+  }
+  .lightbox-close {
+    position: fixed;
+    top: 16px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+  }
+  .lightbox-close:hover { background: var(--accent); }
+
+  /* === Mockup Inner Styles (App Chrome) === */
+  .m-app {
+    display: flex;
+    min-height: 420px;
+    background: var(--bg-primary);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+    color: var(--text-primary);
+  }
+  .m-sidebar {
+    width: 200px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .m-sidebar-brand {
+    padding: 16px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .m-sidebar-brand .ws-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--success);
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .m-sidebar nav { flex: 1; padding: 8px 6px; }
+  .m-nav-link {
+    display: block;
+    padding: 7px 10px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 1px;
+  }
+  .m-nav-link.active {
+    background: var(--accent-light);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .m-nav-section {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    padding: 10px 8px 4px;
+  }
+  .m-sidebar-footer {
+    padding: 6px 6px;
+    border-top: 1px solid var(--border);
+  }
+  .m-main {
+    flex: 1;
+    padding: 20px;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  /* Modal overlay inside mockup */
+  .m-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+  }
+  .m-modal {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 22px;
+    width: 440px;
+    max-width: 90%;
+  }
+  .m-modal h3 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .m-modal-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+  }
+
+  /* Buttons inside mockups */
+  .m-btn {
+    display: inline-block;
+    padding: 7px 18px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+  }
+  .m-btn-primary { background: var(--accent); color: #fff; }
+  .m-btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+  .m-btn-danger { background: var(--danger); color: #fff; }
+  .m-btn-success { background: var(--success); color: #fff; }
+  .m-btn-sm { padding: 4px 12px; font-size: 11px; }
+  .m-btn-outline-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+
+  /* Inputs */
+  .m-input {
+    width: 100%;
+    padding: 7px 10px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 13px;
+  }
+  .m-select {
+    padding: 7px 10px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 13px;
+  }
+  .m-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+  }
+  .m-field { margin-bottom: 14px; }
+
+  /* Code blocks */
+  .m-code {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-all;
+    position: relative;
+  }
+  .m-copy-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    padding: 2px 8px;
+    font-size: 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+  }
+  .m-copy-btn.highlight {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    border-color: var(--accent);
+  }
+
+  /* Step indicator bar */
+  .m-steps {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    margin-bottom: 18px;
+  }
+  .m-step-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .m-step-dot.completed { background: var(--success); color: #fff; }
+  .m-step-dot.active { background: var(--accent); color: #fff; }
+  .m-step-dot.pending { background: var(--bg-input); color: var(--text-muted); border: 1px solid var(--border); }
+  .m-step-label { font-size: 9px; color: var(--text-muted); margin-right: 2px; }
+  .m-step-label.active { color: var(--text-secondary); font-weight: 600; }
+  .m-step-line { width: 14px; height: 1px; flex-shrink: 0; }
+  .m-step-line.completed { background: var(--accent); }
+  .m-step-line.pending { background: var(--border); }
+
+  /* Platform buttons */
+  .m-platform-grid { display: flex; gap: 12px; margin-bottom: 18px; }
+  .m-platform-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 18px 12px;
+    border-radius: var(--radius-lg);
+    border: 2px solid var(--border);
+    background: var(--bg-card);
+  }
+  .m-platform-btn.selected {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .m-platform-icon { font-size: 18px; font-weight: 700; color: var(--text-secondary); }
+  .m-platform-label { font-size: 12px; font-weight: 600; }
+
+  /* Pairing code display */
+  .m-pairing-box {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 2px solid var(--accent);
+    padding: 20px 16px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .m-pairing-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+  .m-pairing-code {
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    font-family: "SF Mono", "Fira Code", monospace;
+  }
+
+  /* Status dots */
+  .m-status-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .m-status-online { background: var(--success); }
+  .m-status-offline { background: var(--status-terminated); }
+  .m-status-running { background: var(--status-running); }
+  .m-status-waiting { background: var(--status-waiting); }
+  .m-status-completed { background: var(--status-completed); }
+  .m-status-failed { background: var(--status-failed); }
+
+  /* Machine card */
+  .m-machine-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 14px;
+  }
+  .m-metric-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 5px;
+  }
+  .m-metric-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    width: 28px;
+    flex-shrink: 0;
+  }
+  .m-metric-bar {
+    flex: 1;
+    height: 3px;
+    background: var(--bg-input);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .m-metric-fill {
+    height: 100%;
+    border-radius: 2px;
+  }
+  .m-metric-value {
+    font-size: 10px;
+    color: var(--text-muted);
+    width: 30px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* Terminal */
+  .m-terminal {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-primary);
+    overflow: hidden;
+  }
+  .m-terminal-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .m-terminal-body {
+    flex: 1;
+    padding: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .m-msg-role {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 1px;
+    padding: 0 10px;
+  }
+  .m-msg-role.user { color: var(--accent); }
+  .m-msg-role.assistant { color: var(--success); }
+  .m-msg-role.system { color: var(--text-muted); }
+  .m-msg-text {
+    padding: 6px 10px;
+    font-size: 11px;
+    font-family: "SF Mono", "Fira Code", monospace;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .m-tool-card {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin: 2px 0;
+  }
+  .m-tool-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+  .m-tool-badge {
+    font-size: 10px;
+    font-weight: 600;
+    font-family: monospace;
+    color: var(--accent);
+    background: var(--accent-light);
+    padding: 1px 7px;
+    border-radius: 20px;
+  }
+  .m-tool-result-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 20px;
+  }
+  .m-tool-result-badge.ok { background: rgba(76, 175, 128, 0.15); color: var(--success); }
+  .m-tool-result-badge.err { background: rgba(224, 85, 85, 0.15); color: var(--danger); }
+
+  /* Tool approval card */
+  .m-approval-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 2px solid var(--status-waiting);
+    padding: 12px;
+    animation: pulse-border 2s ease-in-out infinite;
+  }
+  @keyframes pulse-border {
+    0%, 100% { border-color: var(--status-waiting); }
+    50% { border-color: rgba(224, 160, 48, 0.3); }
+  }
+
+  /* Spinner */
+  .m-spinner {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    animation: spin 1s linear infinite;
+    margin: 0 auto 12px;
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes pulseDot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Color swatch row */
+  .m-swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+  }
+  .m-swatch.selected { outline: 3px solid var(--text-primary); outline-offset: 1px; }
+
+  /* Session tab bar */
+  .m-tab-bar {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .m-tab {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: var(--radius);
+    font-size: 11px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .m-tab.active {
+    background: var(--accent-light);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .m-tab.inactive {
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+  .m-tab-new {
+    padding: 5px 12px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* Session sidebar */
+  .m-session-sidebar {
+    width: 200px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    background: var(--bg-secondary);
+    display: flex;
+    flex-direction: column;
+  }
+  .m-session-sidebar-header {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  /* Badge */
+  .m-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  /* CLI terminal mockup */
+  .m-cli {
+    background: #0d0d1a;
+    border-radius: var(--radius-lg);
+    border: 1px solid #2a2b4a;
+    overflow: hidden;
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  .m-cli-title-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #161628;
+    border-bottom: 1px solid #2a2b4a;
+  }
+  .m-cli-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .m-cli-dot.red { background: #e05555; }
+  .m-cli-dot.yellow { background: #e0a030; }
+  .m-cli-dot.green { background: #4caf80; }
+  .m-cli-body { padding: 12px 14px; color: #d0d0e8; }
+  .m-cli-prompt { color: var(--accent); }
+  .m-cli-success { color: var(--success); }
+  .m-cli-dim { color: #555570; }
+  .m-cli-info { color: #3b82f6; }
+
+  /* History execution row */
+  .m-history-row {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  /* Empty state */
+  .m-empty {
+    text-align: center;
+    padding: 40px 16px;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+  }
+  .m-empty-title { font-size: 14px; color: var(--text-secondary); margin-bottom: 6px; }
+  .m-empty-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
+
+  /* Tip box */
+  .m-tip {
+    font-size: 10px;
+    color: var(--text-muted);
+    padding: 7px 10px;
+    background: rgba(124, 92, 252, 0.08);
+    border-radius: var(--radius);
+    border: 1px solid rgba(124, 92, 252, 0.2);
+  }
+
+  /* Print styles */
+  @media print {
+    body { background: #fff; color: #222; }
+    .guide-header { background: none; }
+    .mockup-wrapper { box-shadow: none; border: 2px solid #ccc; page-break-inside: avoid; }
+    .m-app, .m-sidebar, .m-main, .m-modal, .m-cli { color-adjust: exact; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .lightbox-overlay { display: none !important; }
+    .mockup-hint { display: none; }
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .toc-grid { grid-template-columns: 1fr; }
+    .m-sidebar { width: 140px; }
+    .m-session-sidebar { width: 160px; }
+    .m-modal { width: 95%; }
+    .step-description { padding-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="guide-header">
+  <h1><span>PromptFlow</span> Machine Setup Guide</h1>
+  <p>A step-by-step visual walkthrough for connecting a client machine and running Claude Code sessions through PromptFlow.</p>
+</div>
+
+<div class="guide-container">
+
+  <!-- Table of Contents -->
+  <div class="toc">
+    <h2>Table of Contents</h2>
+    <div class="toc-grid">
+      <a href="#step-1"><span class="toc-num">1</span> Navigate to Machines Page</a>
+      <a href="#step-9"><span class="toc-num">9</span> Create a Session on a Machine</a>
+      <a href="#step-2"><span class="toc-num">2</span> Add Machine &mdash; Platform Selection</a>
+      <a href="#step-10"><span class="toc-num">10</span> Send to Claude from a Template</a>
+      <a href="#step-3"><span class="toc-num">3</span> Generate Pairing Code</a>
+      <a href="#step-11"><span class="toc-num">11</span> Session Running &mdash; Monitor Output</a>
+      <a href="#step-4"><span class="toc-num">4</span> Install the Agent &mdash; Choose Method</a>
+      <a href="#step-12"><span class="toc-num">12</span> Tool Approval &mdash; Approve or Deny</a>
+      <a href="#step-5"><span class="toc-num">5</span> Claude Code Auto-Install</a>
+      <a href="#step-13"><span class="toc-num">13</span> Session Complete &mdash; Review Results</a>
+      <a href="#step-6"><span class="toc-num">6</span> Waiting for Connection</a>
+      <a href="#step-14"><span class="toc-num">14</span> Machine Management &mdash; Edit Settings</a>
+      <a href="#step-7"><span class="toc-num">7</span> Machine Connected &mdash; Success</a>
+      <a href="#step-15"><span class="toc-num">15</span> View Session History by Machine</a>
+      <a href="#step-8"><span class="toc-num">8</span> Machine Dashboard</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- STEP 1 -->
+  <!-- ============================================================ -->
+  <div class="step-section" id="step-1">
+    <div class="step-header">
+      <div class="step-number">1</div>
+      <div class="step-title">Navigate to Machines Page</div>
+    </div>
+    <div class="step-description">
+      Open PromptFlow in your browser. In the left sidebar, click <strong>Machines</strong>. If no machines have been connected yet, you will see an empty state with a prominent <strong>+ Add Machine</strong> button.
+    </div>
+    <div class="mockup-wrapper" onclick="openLightbox(this)">
+      <div class="mockup-hint">Click to enlarge</div>
+      <div class="m-app">
+        <div class="m-sidebar">
+          <div class="m-sidebar-brand">PromptFlow <span class="ws-dot"></span></div>
+          <nav>
+            <div class="m-nav-link">Tasks</div>
+            <div class="m-nav-section">Template Library</div>
+            <div class="m-nav-link">API Design</div>
+            <div class="m-nav-link">Code Review</div>
+          </nav>
+          <div class="m-sidebar-footer">
+            <div class="m-nav-link">Sessions</div>
+            <div class="m-nav-link active">Machines</div>
+            <div class="m-nav-link">History</div>
+            <div class="m-nav-link">Manual</div>
+          </div>
+        </div>
+        <div class="m-main" style="display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div>
+              <div style="font-size: 18px; font-weight: 700; margin-bottom: 4px;">Machines</div>
+              <div style="font-size: 12px; color: var(--text-secondary);">Manage connected machines that run Claude sessions.</div>
+            </div>
+            <div class="m-btn m-btn-primary">+ Add Machine</div>
+          </div>
+          <div class="m-empty">
+            <div class="m-empty-title">No machines connected yet.</div>
+            <div class="m-empty-desc">Add a machine to start running Claude sessions across your network.</div>
+            <div class="m-btn m-btn-primary">+ Add Machine</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- STEP 2 -->
+  <!-- ============================================================ -->
+  <div class="step-section" id="step-2">
+    <div class="step-header">
+      <div class="step-number">2</div>
+      <div class="step-title">Click "Add Machine" &mdash; Platform Selection</div>
+    </div>
+    <div class="step-description">
+      The Setup Wizard modal opens over the dark background. Choose the platform of your target machine: <strong>macOS</strong>, <strong>Windows</strong>, or <strong>Linux</strong>. The step indicator at the top shows your progress through the wizard.
+    </div>
+    <div class="mockup-wrapper" onclick="openLightbox(this)">
+      <div class="mockup-hint">Click to enlarge</div>
+      <div class="m-app" style="position: relative;">
+        <div class="m-sidebar" style="opacity: 0.3;">
+          <div class="m-sidebar-brand">PromptFlow</div>
+          <nav><div class="m-nav-link active">Machines</div></nav>
+        </div>
+        <div class="m-main" style="opacity: 0.3;"></div>
+        <div class="m-overlay">
+          <div class="m-modal">
+            <!-- Step indicator -->
+            <div class="m-steps">
+              <div class="m-step-dot active">1</div><span class="m-step-label active">Platform</span>
+              <div class="m-step-line pending"></div>
+              <div class="m-step-dot pending">2</div><span class="m-step-label">Pairing</span>
+              <div class="m-step-line pending"></div>
+              <div class="m-step-dot pending">3</div><span class="m-step-label">Install</span>
+              <div class="m-step-line pending"></div>
+              <div class="m-step-dot pending">4</div><span class="m-step-label">Connect</span>
+              <div class="m-step-line pending"></div>
+              <div class="m-step-dot pending">5</div><span class="m-step-label">Done</span>
+            </div>
+            <h3>Add a Machine</h3>
+            <div class="m-modal-desc">Choose the platform of the machine you want to connect.</div>
+            <div class="m-platform-grid">
+              <div class="m-platform-btn selected">
+                <div class="m-platform-icon">&#63743;</div>
+                <div class="m-platform-label">macOS</div>
+              </div>
+              <div class="m-platform-btn">
+                <div class="m-platform-icon">&#8862;</div>
+                <div class="m-platform-label">Windows</div>
+              </div>
+              <div class="m-platform-btn">
+                <div class="m-platform-icon">&#128039;</div>
+                <div class="m-platform-label">Linux</div>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+              <div class="m-btn m-btn-secondary">Cancel</div>
+              <div class="m-btn m-btn-primary">Next</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- STEP 3 -->
+  <!-- ============================================================ -->
+  <div class="step-section" id="step-3">
+    <div class="step-header">
+      <div class="step-number">3</div>
+      <div class="step-title">Generate Pairing Code</div>
+    </div>
+    <div class="step-description">
+      A unique 6-character pairing code is generated and displayed prominently. Below it, the API key is shown (for manual setup). Both can be copied to clipboard. Note the expiry time &mdash; codes are valid for 15 minutes.
+    </div>
+    <div class="mockup-wrapper" onclick="openLightbox(this)">
+      <div class="mockup-hint">Click to enlarge</div>
+      <div class="m-app" style="position: relative;">
+        <div class="m-sidebar" style="opacity: 0.3;">
+          <div class="m-sidebar-brand">PromptFlow</div>
+          <nav></nav>
+        </div>
+        <div class="m-main" style="opacity: 0.3;"></div>
+        <div class="m-overlay">
+          <div class="m-modal">
+            <div class="m-steps">
+              <div class="m-step-dot completed">&#10003;</div><span class="m-step-label">Platform</span>
+              <div class="m-step-line completed"></div>
+              <div class="m-step-dot active">2</div><span class="m-step-label active">Pairing</span>
+              <div class="m-step-line pending"></div>
+              <div class="m-step-dot pending">3</div><span class="m-step-label">Install</span>
+              <div class="m-step-line pending"></div>
+              <div class="m-step-dot pending">4</div><span class="m-step-label">Connect</span>
+              <div class="m-step-line pending"></div>
+              <div class="m-step-dot pending">5</div><span class="m-step-label">Done</span>
+            </div>
+            <h3>Pairing Code Generated</h3>
+            <div class="m-modal-desc">Use this code on the target machine to pair with PromptFlow.</div>
+            <div class="m-pairing-box">
+              <div class="m-pairing-label">Pairing Code</div>
+              <div class="m-pairing-code">A3X9K2</div>
+              <div style="margin-top: 10px;">
+                <span class="m-btn m-btn-secondary m-btn-sm">Copy Code</span>
+              </div>
+            </div>
+            <div style="margin-bottom: 14px;">
+              <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">API Key (for manual setup)</div>
+              <div class="m-code" style="font-size: 11px;">
+pf_a3x9k2_7f8e2d1b4c6a9e3f5d8b2a1c4e7f0d9b<span class="m-copy-btn">Copy</span></div>
+            </div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 14px;">Expires: 4/5/2026, 3:15:42 PM</div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+              <div class="m-btn m-btn-secondary">Back</div>
+              <div class="m-btn m-btn-primary">Next</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- STEP 4 -->
+  <!-- ============================================================ -->
+  <div class="step-section" id="step-4">
+    <div class="step-header">
+      <div class="step-number">4</div>
+      <div class="step-title">Install the Agent &mdash; Choose Method</div>
+    </div>
+    <div class="step-description">
+      The Install step presents three options. <strong>Option A:</strong> Manual npm commands (Step 1: install, Step 2: pair). <strong>Option B:</strong> Copy a prompt and paste it into Claude Code CLI (highlighted with purple accent). <strong>Option C:</strong> A combined one-liner. The Claude Code auto-install prompt is the recommended approach.
+    </div>
+    <div class="mockup-wrapper" onclick="openLightbox(this)">
+      <div class="mockup-hint">Click to enlarge</div>
+      <div class="m-app" style="position: relative;">
+        <div class="m-sidebar" style="opacity: 0.3;">
+          <div class="m-sidebar-brand">PromptFlow</div>
+          <nav></nav>
+        </div>
+        <div class="m-main" style="opacity: 0.3;"></div>
+        <div class="m-overlay">
+          <div class="m-modal" style="max-height: 500px; overflow-y: auto;">
+            <div class="m-steps">
+              <div class="m-step-dot completed">&#10003;</div><span class="m-step-label">Platform</span>
+              <div class="m-step-line completed"></div>
+              <div class="m-step-dot completed">&#10003;</div><span class="m-step-label">Pairing</span>
+              <div class="m-step-line completed"></div>
+              <div class="m-step-dot active">3</div><span class="m-step-label active">Install</span>
+              <div class="m-step-line pending"></div>
+              <div class="m-step-dot pending">4</div><span class="m-step-label">Connect</span>
+              <div class="m-step-line pending"></div>
+              <div class="m-step-dot pending">5</div><span class="m-step-label">Done</span>
+            </div>
+            <h3>Install the Agent</h3>
+            <div class="m-modal-desc">Run these commands on the target machine (macOS Terminal).</div>
+
+            <div style="margin-bottom: 6px;">
+              <div style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Step 1: Install the agent</div>
+              <div class="m-code">npm install -g @promptflow/agent<span class="m-copy-btn">Copy</span></div>
+            </div>
+            <div style="margin-bottom: 16px; margin-top: 12px;">
+              <div style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Step 2: Pair with this server</div>
+              <div class="m-code">promptflow-agent pair A3X9K2 --server ws://192.168.1.50:3001<span class="m-copy-btn">Copy</span></div>
+            </div>
+
+            <!-- Recommended: Claude Code prompt -->
+            <div style="margin-bottom: 14px;">
+              <div style="font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 14px;">&#10022;</span> Easiest: Paste this into Claude Code CLI
+              </div>
+              <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 6px;">Open Claude Code on the target machine and paste this prompt. It will install, configure, pair, and start the agent automatically.</div>
+              <div class="m-code" style="font-size: 10px; max-height: 80px; overflow-y: auto;">Install and configure the PromptFlow remote agent on this machine.
+Do everything automatically without asking questions.
+
+Steps:
+1. Clone the agent: git clone ...
+2. npm install
+3. Create config: ~/.promptflow/agent.yaml
+4. Register with server
+5. Start the agent<span class="m-copy-btn highlight">Copy Prompt</span></div>
+            </div>
+
+            <div class="m-tip" style="margin-bottom: 14px;">Tip: The Claude Code prompt above handles everything &mdash; install, config, pairing, and verification. Just paste it and let Claude do the work.</div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+              <div class="m-btn m-btn-secondary">Back</div>
+              <div class="m-btn m-btn-primary">I've run the commands</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- STEP 5 -->
+  <!-- ============================================================ -->
+  <div class="step-section" id="step-5">
+    <div class="step-header">
+      <div class="step-number">5</div>
+      <div class="step-title">Claude Code Auto-Install (Recommended)</div>
+    </div>
+    <div class="step-description">
+      When you paste the auto-install prompt into Claude Code CLI on the target machine, Claude will automatically execute each step: cloning the repository, installing dependencies, creating the config file, pairing with the server, and starting the agent. You can watch the progress in the terminal.
+    </div>
+    <div class="mockup-wrapper" onclick="openLightbox(this)">
+      <div class="mockup-hint">Click to enlarge</div>
+      <div class="m-cli">
+        <div class="m-cli-title-bar">
+          <span class="m-cli-dot red"></span>
+          <span class="m-cli-dot yellow"></span>
+          <span class="m-cli-dot green"></span>
+          <span style="flex: 1; text-align: center; font-size: 11px; color: var(--text-muted);">Terminal &mdash; ~/Projects</span>
+        </div>
+        <div class="m-cli-body">
+<span class="m-cli-prompt">$</span> claude
+<span class="m-cli-dim">Claude Code v1.0.32 (Sonnet)</span>
+
+<span class="m-cli-prompt">&gt;</span> Install and configure the PromptFlow remote agent on this machine...
+
+<span class="m-cli-dim">I'll set up the PromptFlow agent. Let me handle each step:</span>
+
+<span class="m-cli-info">Step 1/5</span> Cloning PromptFlow repository...
+<span class="m-cli-dim">  git clone https://github.com/DMPlisken/PromptManager.git /tmp/promptflow-setup</span>
+<span class="m-cli-success">  &#10003; Repository cloned successfully</span>
+
+<span class="m-cli-info">Step 2/5</span> Installing dependencies...
+<span class="m-cli-dim">  cd services/agent && npm install</span>
+<span class="m-cli-success">  &#10003; 47 packages installed</span>
+
+<span class="m-cli-info">Step 3/5</span> Creating configuration...
+<span class="m-cli-dim">  mkdir -p ~/.promptflow</span>
+<span class="m-cli-dim">  Writing ~/.promptflow/agent.yaml</span>
+<span class="m-cli-success">  &#10003; Config created at ~/.promptflow/agent.yaml</span>
+
+<span class="m-cli-info">Step 4/5</span> Pairing with server...
+<span class="m-cli-dim">  curl -X POST http://192.168.1.50:8003/api/machines/pair</span>
+<span class="m-cli-success">  &#10003; Machine paired successfully (id: 3)</span>
+
+<span class="m-cli-info">Step 5/5</span> Starting the agent...
+<span class="m-cli-dim">  npx tsx src/index.ts start</span>
+<span class="m-cli-success">  &#10003; Agent connected to ws://192.168.1.50:3001/ws/agent</span>
+<span class="m-cli-success">  &#10003; Heartbeat: OK</span>
+
+<span style="color: var(--success); font-weight: 600;">All steps completed successfully.</span> The PromptFlow agent is now running
+and connected to your server. The machine should appear in your
+PromptFlow dashboard momentarily.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- STEP 6 -->
+  <!-- ============================================================ -->
+  <div class="step-section" id="step-6">
+    <div class="step-header">
+      <div class="step-number">6</div>
+      <div class="step-title">Waiting for Connection</div>
+    </div>
+    <div class="step-description">
+      Back in the browser, the wizard advances to the "Connect" step and displays a spinner while it listens for the agent to connect. It polls the server every 3 seconds and also listens for real-time WebSocket events. The pairing code is shown for reference.
+    </div>
+    <div class="mockup-wrapper" onclick="openLightbox(this)">
+      <div class="mockup-hint">Click to enlarge</div>
+      <div class="m-app" style="position: relative;">
+        <div class="m-sidebar" style="opacity: 0.3;">
+          <div class="m-sidebar-brand">PromptFlow</div>
+          <nav></nav>
+        </div>
+        <div class="m-main" style="opacity: 0.3;"></div>
+        <div class="m-overlay">
+          <div class="m-modal">
+            <div class="m-steps">
+              <div class="m-step-dot completed">&#10003;</div><span class="m-step-label">Platform</span>
+              <div class="m-step-line completed"></div>
+              <div class="m-step-dot completed">&#10003;</div><span class="m-step-label">Pairing</span>
+              <div class="m-step-line completed"></div>
+              <div class="m-step-dot completed">&#10003;</div><span class="m-step-label">Install</span>
+              <div class="m-step-line completed"></div>
+              <div class="m-step-dot active">4</div><span class="m-step-label active">Connect</span>
+              <div class="m-step-line pending"></div>
+              <div class="m-step-dot pending">5</div><span class="m-step-label">Done</span>
+            </div>
+            <h3>Waiting for Connection</h3>
+            <div class="m-modal-desc">Waiting for the agent to connect. Make sure you've run the install commands on the target machine.</div>
+            <div style="display: flex; flex-direction: column; align-items: center; padding: 28px 16px; margin-bottom: 18px;">
+              <div class="m-spinner"></div>
+              <div style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Listening for agent connection...</div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">
+                Pairing code: <span style="font-family: monospace; font-weight: 600; color: var(--accent);">A3X9K2</span>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <div class="m-btn m-btn-secondary">Back</div>
+              <div class="m-btn m-btn-secondary">Cancel</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- STEP 7 -->
+  <!-- ============================================================ -->
+  <div class="step-section" id="step-7">
+    <div class="step-header">
+      <div class="step-number">7</div>
+      <div class="step-title">Machine Connected &mdash; Success</div>
+    </div>
+    <div class="step-description">
+      The wizard detects the new machine and transitions to the "Done" step. A green checkmark and the machine details (hostname, platform) are shown. You can optionally set a friendly display name before finishing.
+    </div>
+    <div class="mockup-wrapper" onclick="openLightbox(this)">
+      <div class="mockup-hint">Click to enlarge</div>
+      <div class="m-app" style="position: relative;">
+        <div class="m-sidebar" style="opacity: 0.3;">
+          <div class="m-sidebar-brand">PromptFlow</div>
+          <nav></nav>
+        </div>
+        <div class="m-main" style="opacity: 0.3;"></div>
+        <div class="m-overlay">
+          <div class="m-modal">
+            <div class="m-steps">
+              <div class="m-step-dot completed">&#10003;</div><span class="m-step-label">Platform</span>
+              <div class="m-step-line completed"></div>
+              <div class="m-step-dot completed">&#10003;</div><span class="m-step-label">Pairing</span>
+              <div class="m-step-line completed"></div>
+              <div class="m-step-dot completed">&#10003;</div><span class="m-step-label">Install</span>
+              <div class="m-step-line completed"></div>
+              <div class="m-step-dot completed">&#10003;</div><span class="m-step-label">Connect</span>
+              <div class="m-step-line completed"></div>
+              <div class="m-step-dot active" style="background: var(--success);">&#10003;</div><span class="m-step-label active">Done</span>
+            </div>
+            <h3>Machine Connected</h3>
+            <div class="m-modal-desc">The machine has been successfully paired with PromptFlow.</div>
+            <!-- Success banner -->
+            <div style="display: flex; align-items: center; gap: 10px; background: rgba(76,175,128,0.1); border: 1px solid rgba(76,175,128,0.3); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 16px;">
+              <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--success); display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; font-weight: 700; flex-shrink: 0;">&#10003;</div>
+              <div>
+                <div style="font-size: 13px; font-weight: 600;">Daves-MacBook-Pro</div>
+                <div style="font-size: 11px; color: var(--text-muted);">Daves-MacBook-Pro.local &middot; macOS</div>
+              </div>
+            </div>
+            <div class="m-field">
+              <div class="m-label">Machine Name (optional)</div>
+              <input class="m-input" value="Office MacBook Pro" readonly>
+            </div>
+            <div style="display: flex; justify-content: flex-end;">
+              <div class="m-btn m-btn-primary">Done</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- STEP 8 -->
+  <!-- ============================================================ -->
+  <div class="step-section" id="step-8">
+    <div class="step-header">
+      <div class="step-number">8</div>
+      <div class="step-title">Machine Dashboard &mdash; View Connected Machines</div>
+    </div>
+    <div class="step-description">
+      After closing the wizard, the Machines page now displays your connected machines as cards. Each card shows the machine name, platform icon, online/offline status dot, CPU and memory usage bars, and the current session load. Status badges at the top summarize the fleet.
+    </div>
+    <div class="mockup-wrapper" onclick="openLightbox(this)">
+      <div class="mockup-hint">Click to enlarge</div>
+      <div class="m-app">
+        <div class="m-sidebar">
+          <div class="m-sidebar-brand">PromptFlow <span class="ws-dot"></span></div>
+          <nav>
+            <div class="m-nav-link">Tasks</div>
+            <div class="m-nav-section">Template Library</div>
+            <div class="m-nav-link">API Design</div>
+            <div class="m-nav-link">Code Review</div>
+          </nav>
+          <div class="m-sidebar-footer">
+            <div class="m-nav-link">Sessions (1)</div>
+            <div class="m-nav-link active">Machines (2)</div>
+            <div class="m-nav-link">History</div>
+            <div class="m-nav-link">Manual</div>
+          </div>
+        </div>
+        <div class="m-main">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+            <div>
+              <div style="font-size: 18px; font-weight: 700; margin-bottom: 4px;">Machines</div>
+              <div style="font-size: 12px; color: var(--text-secondary);">Manage connected machines that run Claude sessions.</div>
+            </div>
+            <div class="m-btn m-btn-primary">+ Add Machine</div>
+          </div>
+          <!-- Stats -->
+          <div style="display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap;">
+            <span class="m-badge" style="background: rgba(76,175,128,0.15); color: var(--success);"><span class="m-status-dot m-status-online"></span> 2 online</span>
+            <span class="m-badge" style="background: rgba(107,107,133,0.15); color: var(--text-muted);"><span class="m-status-dot m-status-offline"></span> 0 offline</span>
+            <span style="font-size: 11px; color: var(--text-muted); display: flex; align-items: center;">2 total</span>
+          </div>
+          <!-- Cards grid -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <!-- Card 1 -->
+            <div class="m-machine-card" style="border-left: 4px solid #7c5cfc;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--radius); background: var(--bg-input); font-size: 10px; font-weight: 600; color: var(--text-secondary);">&#63743;</span>
+                  <div>
+                    <div style="font-size: 13px; font-weight: 600;">Office MacBook Pro</div>
+                    <div style="font-size: 10px; color: var(--text-muted);">macOS &middot; Daves-MBP.local</div>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <span class="m-status-dot m-status-online"></span>
+                  <span style="font-size: 10px; color: var(--success); font-weight: 500;">online</span>
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px;">
+                <div class="m-metric-row"><span class="m-metric-label">CPU</span><div class="m-metric-bar"><div class="m-metric-fill" style="width: 34%; background: var(--success);"></div></div><span class="m-metric-value">34%</span></div>
+                <div class="m-metric-row"><span class="m-metric-label">MEM</span><div class="m-metric-bar"><div class="m-metric-fill" style="width: 52%; background: var(--success);"></div></div><span class="m-metric-value">52%</span></div>
+                <div class="m-metric-row"><span class="m-metric-label">SESS</span><div class="m-metric-bar"><div class="m-metric-fill" style="width: 40%; background: var(--success);"></div></div><span class="m-metric-value">2/5</span></div>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 10px; color: var(--text-muted);">Last seen 3s ago</span>
+                <div style="display: flex; gap: 4px;">
+                  <span class="m-btn m-btn-secondary m-btn-sm">Edit</span>
+                  <span class="m-btn m-btn-sm" style="background: transparent; border: 1px solid var(--danger); color: var(--danger);">Remove</span>
+                </div>
+              </div>
+            </div>
+            <!-- Card 2 -->
+            <div class="m-machine-card" style="border-left: 4px solid #3b82f6;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--radius); background: var(--bg-input); font-size: 10px; font-weight: 600; color: var(--text-secondary);">&#128039;</span>
+                  <div>
+                    <div style="font-size: 13px; font-weight: 600;">Build Server</div>
+                    <div style="font-size: 10px; color: var(--text-muted);">Linux &middot; build-srv-01</div>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <span class="m-status-dot m-status-online"></span>
+                  <span style="font-size: 10px; color: var(--success); font-weight: 500;">online</span>
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px;">
+                <div class="m-metric-row"><span class="m-metric-label">CPU</span><div class="m-metric-bar"><div class="m-metric-fill" style="width: 12%; background: var(--success);"></div></div><span class="m-metric-value">12%</span></div>
+                <div class="m-metric-row"><span class="m-metric-label">MEM</span><div class="m-metric-bar"><div class="m-metric-fill" style="width: 28%; background: var(--success);"></div></div><span class="m-metric-value">28%</span></div>
+                <div class="m-metric-row"><span class="m-metric-label">SESS</span><div class="m-metric-bar"><div class="m-metric-fill" style="width: 10%; background: var(--success);"></div></div><span class="m-metric-value">1/10</span></div>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 10px; color: var(--text-muted);">Last seen 1s ago</span>
+                <div style="display: flex; gap: 4px;">
+                  <span class="m-btn m-btn-secondary m-btn-sm">Edit</span>
+                  <span class="m-btn m-btn-sm" style="background: transparent; border: 1px solid var(--danger); color: var(--danger);">Remove</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- STEP 9 -->
+  <!-- ============================================================ -->
+  <div class="step-section" id="step-9">
+    <div class="step-header">
+      <div class="step-number">9</div>
+      <div class="step-title">Create a Session on a Specific Machine</div>
+    </div>
+    <div class="step-description">
+      Navigate to the Sessions page and click <strong>+ New Session</strong>. In the SessionCreateModal, a <strong>Target Machine</strong> dropdown lets you choose a specific machine or "Auto (least loaded)". Each machine shows its session load and status.
+    </div>
+    <div class="mockup-wrapper" onclick="openLightbox(this)">
+      <div class="mockup-hint">Click to enlarge</div>
+      <div class="m-app" style="position: relative;">
+        <div class="m-sidebar" style="opacity: 0.3;">
+          <div class="m-sidebar-brand">PromptFlow</div>
+          <nav></nav>
+          <div class="m-sidebar-footer">
+            <div class="m-nav-link active">Sessions (1)</div>
+            <div class="m-nav-link">Machines (2)</div>
+          </div>
+        </div>
+        <div class="m-main" style="opacity: 0.3;"></div>
+        <div class="m-overlay">
+          <div class="m-modal" style="width: 440px;">
+            <h3>New Claude Session</h3>
+            <div style="margin-top: 14px;">
+              <div class="m-field">
+                <div class="m-label">Prompt *</div>
+                <div class="m-input" style="height: 72px; font-family: monospace; font-size: 11px; line-height: 1.5; color: var(--text-primary); padding: 8px 10px;">Fix the login bug in auth.py where the session token is not being refreshed after password change.</div>
+              </div>
+              <div class="m-field">
+                <div class="m-label">Working Directory</div>
+                <input class="m-input" value="/home/dave/projects/webapp" readonly>
+              </div>
+              <div style="display: flex; gap: 12px;">
+                <div class="m-field" style="flex: 1;">
+                  <div class="m-label">Model</div>
+                  <div class="m-select" style="width: 100%;">Sonnet</div>
+                </div>
+                <div class="m-field" style="flex: 1;">
+                  <div class="m-label">Session Name</div>
+                  <input class="m-input" value="Fix auth bug" readonly>
+                </div>
+              </div>
+              <div class="m-field">
+                <div class="m-label">Target Machine</div>
+                <div class="m-select" style="width: 100%; background: var(--accent-light); border-color: var(--accent); color: var(--accent); font-weight: 500;">
+                  &#63743; Office MacBook Pro - 2/5 sessions
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; font-size: 10px; color: var(--text-muted);">
+                  <span style="color: var(--text-muted);">Other options:</span>
+                  <span style="padding: 1px 7px; border-radius: 12px; background: rgba(59,130,246,0.15); color: #3b82f6;">Build Server - 1/10</span>
+                  <span style="padding: 1px 7px; border-radius: 12px; background: var(--accent-light); color: var(--accent);">Auto (least loaded)</span>
+                </div>
+              </div>
+              <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px;">
+                <div class="m-btn m-btn-secondary">Cancel</div>
+                <div class="m-btn m-btn-primary">Start Session</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- STEP 10 -->
+  <!-- ============================================================ -->
+  <div class="step-section" id="step-10">
+    <div class="step-header">
+      <div class="step-number">10</div>
+      <div class="step-title">Alternative &mdash; Send to Claude from a Template</div>
+    </div>
+    <div class="step-description">
+      You can also launch a session directly from a template. On the GroupPage, after filling in variables and previewing the rendered prompt, click <strong>Send to Claude</strong> next to the "Copy to Clipboard" button. The SessionCreateModal opens with the prompt pre-filled.
+    </div>
+    <div class="mockup-wrapper" onclick="openLightbox(this)">
+      <div class="mockup-hint">Click to enlarge</div>
+      <div class="m-app">
+        <div class="m-sidebar">
+          <div class="m-sidebar-brand">PromptFlow <span class="ws-dot"></span></div>
+          <nav>
+            <div class="m-nav-link">Tasks</div>
+            <div class="m-nav-section">Template Library</div>
+            <div class="m-nav-link active">Code Review</div>
+            <div class="m-nav-link">API Design</div>
+          </nav>
+          <div class="m-sidebar-footer">
+            <div class="m-nav-link">Sessions (1)</div>
+            <div class="m-nav-link">Machines (2)</div>
+            <div class="m-nav-link">History</div>
+          </div>
+        </div>
+        <div class="m-main" style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="font-size: 18px; font-weight: 700;">Code Review</div>
+          <!-- Template tabs -->
+          <div style="display: flex; gap: 3px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+            <span style="padding: 5px 12px; border-radius: var(--radius); background: var(--accent-light); border: 1px solid var(--accent); color: var(--accent); font-size: 12px; font-weight: 600;">Security Audit</span>
+            <span style="padding: 5px 12px; border-radius: var(--radius); border: 1px solid var(--border); color: var(--text-secondary); font-size: 12px;">Performance</span>
+          </div>
+          <!-- Preview card -->
+          <div style="background: var(--bg-card); border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 14px;">
+            <div style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">Preview</div>
+            <pre style="background: var(--bg-input); padding: 10px; border-radius: var(--radius); font-size: 10px; font-family: monospace; color: var(--text-primary); white-space: pre-wrap; line-height: 1.5; max-height: 120px; overflow: hidden;">Review the following code for security vulnerabilities.
+Focus on: authentication, input validation, SQL injection.
+
+File: services/backend/app/routers/auth.py
+Language: Python
+
+Pay special attention to:
+- Token generation and validation
+- Password hashing
+- Session management
+- CORS configuration</pre>
+            <div style="display: flex; gap: 6px; margin-top: 10px;">
+              <div class="m-btn m-btn-secondary m-btn-sm">Copy to Clipboard</div>
+              <div class="m-btn m-btn-primary m-btn-sm" style="display: flex; align-items: center; gap: 4px;">
+                <span style="font-size: 12px;">&#9654;</span> Send to Claude
+              </div>
+            </div>
+          </div>
+          <!-- Variable sidebar -->
+          <div style="background: var(--bg-secondary); border-radius: var(--radius); border: 1px solid var(--border); padding: 10px;">
+            <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Variables</div>
+            <div style="margin-bottom: 6px;">
+              <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 2px;">FILE_PATH</div>
+              <div class="m-input" style="font-size: 10px; padding: 4px 8px;">services/backend/app/routers/auth.py</div>
+            </div>
+            <div>
+              <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 2px;">LANGUAGE</div>
+              <div class="m-input" style="font-size: 10px; padding: 4px 8px;">Python</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- STEP 11 -->
+  <!-- ============================================================ -->
+  <div class="step-section" id="step-11">
+    <div class="step-header">
+      <div class="step-number">11</div>
+      <div class="step-title">Session Running &mdash; Monitor Output</div>
+    </div>
+    <div class="step-description">
+      The Sessions page shows the running session with streaming terminal output. Messages appear in real time as Claude thinks and acts. Tool calls are shown as collapsible cards with the tool name badged in purple. The session info bar at the top shows status, machine name, model, and running cost.
+    </div>
+    <div class="mockup-wrapper" onclick="openLightbox(this)">
+      <div class="mockup-hint">Click to enlarge</div>
+      <div class="m-app" style="min-height: 480px;">
+        <div class="m-sidebar">
+          <div class="m-sidebar-brand">PromptFlow <span class="ws-dot"></span></div>
+          <nav>
+            <div class="m-nav-link">Tasks</div>
+            <div class="m-nav-section">Template Library</div>
+            <div class="m-nav-link">Code Review</div>
+          </nav>
+          <div class="m-sidebar-footer">
+            <div class="m-nav-link active">Sessions (2)</div>
+            <div class="m-nav-link">Machines (2)</div>
+            <div class="m-nav-link">History</div>
+          </div>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
+          <!-- Tab bar -->
+          <div class="m-tab-bar">
+            <div class="m-tab active"><span class="m-status-dot m-status-running"></span> Fix auth bug</div>
+            <div class="m-tab inactive"><span class="m-status-dot m-status-completed"></span> Refactor API</div>
+            <div class="m-tab-new">+ New Session</div>
+          </div>
+          <!-- Info bar -->
+          <div class="m-terminal-bar">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="display: flex; align-items: center; gap: 4px;"><span class="m-status-dot m-status-running"></span> running</span>
+              <span>Machine: <span style="color: var(--accent);">Office MacBook Pro</span></span>
+              <span>Model: sonnet</span>
+              <span>$0.0142</span>
+            </div>
+            <div><span class="m-btn m-btn-danger m-btn-sm">Abort</span></div>
+          </div>
+          <!-- Terminal body -->
+          <div class="m-terminal-body" style="flex: 1;">
+            <div class="m-msg-role user">USER</div>
+            <div class="m-msg-text">Fix the login bug in auth.py where the session token is not being refreshed after password change.</div>
+
+            <div class="m-msg-role assistant">ASSISTANT</div>
+            <div class="m-msg-text">I'll investigate the auth.py file to understand the current token refresh logic and fix the bug.</div>
+
+            <!-- Tool use: Read -->
+            <div class="m-tool-card">
+              <div class="m-tool-header">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span class="m-tool-badge">Read</span>
+                  <span style="color: var(--text-muted);">Tool Use</span>
+                </div>
+                <span style="color: var(--text-muted);">&#9660;</span>
+              </div>
+            </div>
+            <!-- Tool result -->
+            <div class="m-tool-card">
+              <div class="m-tool-header">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span class="m-tool-result-badge ok">Result</span>
+                  <span style="font-size: 11px; color: var(--text-muted);">services/backend/app/routers/auth.py (148 lines)</span>
+                </div>
+                <span style="color: var(--text-muted);">&#9660;</span>
+              </div>
+            </div>
+
+            <div class="m-msg-role assistant">ASSISTANT</div>
+            <div class="m-msg-text">I see the issue. In the `change_password` endpoint, the old session token is invalidated but a new one is never generated. Let me fix this.</div>
+
+            <!-- Tool use: Edit -->
+            <div class="m-tool-card">
+              <div class="m-tool-header">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span class="m-tool-badge">Edit</span>
+                  <span style="color: var(--text-muted);">Tool Use</span>
+                </div>
+                <span style="color: var(--text-muted);">&#9660;</span>
+              </div>
+            </div>
+          </div>
+          <!-- Input area -->
+          <div style="display: flex; gap: 6px; padding: 10px 12px; border-top: 1px solid var(--border);">
+            <div class="m-input" style="flex: 1; height: 36px; font-family: monospace; font-size: 11px; color: var(--text-muted); display: flex; align-items: center;">Send a follow-up message... (Enter to send)</div>
+            <div class="m-btn m-btn-primary m-btn-sm" style="opacity: 0.5; align-self: flex-end;">Send</div>
+          </div>
+        </div>
+        <!-- Session sidebar -->
+        <div class="m-session-sidebar">
+          <div class="m-session-sidebar-header">
+            <span>Sessions</span>
+            <span style="font-size: 11px; color: var(--text-muted);">2 total</span>
+          </div>
+          <div style="display: flex; gap: 3px; padding: 6px 8px; border-bottom: 1px solid var(--border);">
+            <span style="padding: 3px 8px; border: 1px solid var(--accent); border-radius: var(--radius); background: var(--accent-light); color: var(--accent); font-size: 10px;">all</span>
+            <span style="padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-muted); font-size: 10px;">active</span>
+            <span style="padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-muted); font-size: 10px;">completed</span>
+          </div>
+          <div style="padding: 6px;">
+            <div style="padding: 8px 10px; border-radius: var(--radius); background: var(--accent-light); border: 1px solid var(--accent); margin-bottom: 3px;">
+              <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 3px;">
+                <span class="m-status-dot m-status-running"></span>
+                <span style="font-size: 12px; font-weight: 600; color: var(--accent);">Fix auth bug</span>
+              </div>
+              <div style="font-size: 10px; color: var(--text-muted); margin-left: 12px;">sonnet &middot; running</div>
+            </div>
+            <div style="padding: 8px 10px; border-radius: var(--radius); border: 1px solid transparent;">
+              <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 3px;">
+                <span class="m-status-dot m-status-completed"></span>
+                <span style="font-size: 12px; color: var(--text-primary);">Refactor API</span>
+              </div>
+              <div style="font-size: 10px; color: var(--text-muted); margin-left: 12px;">opus &middot; completed</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- STEP 12 -->
+  <!-- ============================================================ -->
+  <div class="step-section" id="step-12">
+    <div class="step-header">
+      <div class="step-number">12</div>
+      <div class="step-title">Tool Approval &mdash; Approve or Deny</div>
+    </div>
+    <div class="step-description">
+      When Claude attempts a potentially destructive action (like running a bash command or editing a file), a tool approval card appears with a pulsing amber border. It shows the tool name, the command or file path, and <strong>Approve</strong> / <strong>Deny</strong> buttons. Keyboard shortcuts: Y to approve, N to deny.
+    </div>
+    <div class="mockup-wrapper" onclick="openLightbox(this)">
+      <div class="mockup-hint">Click to enlarge</div>
+      <div style="background: var(--bg-primary); padding: 16px;">
+        <!-- Context: terminal messages above -->
+        <div style="padding: 6px 10px;">
+          <div class="m-msg-role assistant">ASSISTANT</div>
+          <div class="m-msg-text" style="margin-bottom: 8px;">I need to run the test suite to verify the fix works correctly.</div>
+        </div>
+
+        <!-- Tool use card -->
+        <div class="m-tool-card" style="margin: 0 10px 8px;">
+          <div class="m-tool-header">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="m-tool-badge">Bash</span>
+              <span style="color: var(--text-muted);">Tool Use</span>
+            </div>
+          </div>
+          <div style="padding: 6px 10px; border-top: 1px solid var(--border); font-family: monospace; font-size: 11px; color: var(--text-secondary);">cd /home/dave/projects/webapp && python -m pytest tests/test_auth.py -v</div>
+        </div>
+
+        <!-- Approval card -->
+        <div class="m-approval-card" style="margin: 0 10px;">
+          <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 3px;">Tool approval required</div>
+          <div style="font-size: 13px; font-weight: 600; color: var(--status-waiting); font-family: monospace; margin-bottom: 6px;">Bash</div>
+          <div style="background: var(--bg-input); padding: 8px; border-radius: var(--radius); font-family: monospace; font-size: 11px; color: var(--text-secondary); margin-bottom: 10px; white-space: pre-wrap;">cd /home/dave/projects/webapp && python -m pytest tests/test_auth.py -v</div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <div class="m-btn m-btn-success m-btn-sm" style="font-weight: 600;">Approve</div>
+            <div class="m-btn m-btn-danger m-btn-sm" style="font-weight: 600;">Deny</div>
+            <span style="font-size: 10px; color: var(--text-muted); margin-left: auto;">Y = approve, N = deny</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- STEP 13 -->
+  <!-- ============================================================ -->
+  <div class="step-section" id="step-13">
+    <div class="step-header">
+      <div class="step-number">13</div>
+      <div class="step-title">Session Complete &mdash; Review Results</div>
+    </div>
+    <div class="step-description">
+      When Claude finishes its work, the session status changes to <strong>completed</strong> (purple dot). The final output is visible in the terminal. The info bar shows the total cost and the status. The input area disappears since the session is no longer active.
+    </div>
+    <div class="mockup-wrapper" onclick="openLightbox(this)">
+      <div class="mockup-hint">Click to enlarge</div>
+      <div style="background: var(--bg-primary); display: flex; flex-direction: column;">
+        <!-- Info bar -->
+        <div class="m-terminal-bar">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="display: flex; align-items: center; gap: 4px;"><span class="m-status-dot m-status-completed"></span> completed</span>
+            <span>Machine: <span style="color: var(--accent);">Office MacBook Pro</span></span>
+            <span>Model: sonnet</span>
+            <span style="color: var(--accent); font-weight: 600;">$0.0847</span>
+            <span>12,430 tokens</span>
+          </div>
+        </div>
+        <!-- Terminal body -->
+        <div class="m-terminal-body" style="padding: 14px;">
+          <!-- Earlier messages truncated -->
+          <div style="font-size: 10px; color: var(--text-muted); font-style: italic; padding: 4px 10px; margin-bottom: 6px;">... earlier messages ...</div>
+
+          <!-- Tool result: test run -->
+          <div class="m-tool-card">
+            <div class="m-tool-header">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="m-tool-result-badge ok">Result</span>
+                <span style="font-size: 11px; color: var(--text-muted);">5 passed, 0 failed</span>
+              </div>
+              <span style="color: var(--text-muted);">&#9660;</span>
+            </div>
+          </div>
+
+          <div class="m-msg-role assistant">ASSISTANT</div>
+          <div class="m-msg-text" style="line-height: 1.6;">The bug has been fixed. Here's a summary of the changes:
+
+<strong style="color: var(--accent);">Root cause:</strong> In `change_password()`, the old session token was being invalidated via `revoke_token(current_token)`, but no new token was generated afterward. Users were left with an invalidated session.
+
+<strong style="color: var(--accent);">Fix applied:</strong> Added `new_token = generate_session_token(user.id)` after password verification and old token revocation, then included it in the response body.
+
+<strong style="color: var(--accent);">Files modified:</strong>
+  - services/backend/app/routers/auth.py (lines 87-95)
+
+<strong style="color: var(--accent);">Tests:</strong> All 5 tests pass, including the new test_password_change_refreshes_token.</div>
+
+          <div style="font-size: 10px; color: var(--text-muted); font-style: italic; padding: 4px 10px; margin-top: 8px;">Session completed.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- STEP 14 -->
+  <!-- ============================================================ -->
+  <div class="step-section" id="step-14">
+    <div class="step-header">
+      <div class="step-number">14</div>
+      <div class="step-title">Machine Management &mdash; Edit Settings</div>
+    </div>
+    <div class="step-description">
+      Click <strong>Edit</strong> on any machine card to open the MachineEditModal. You can change the display name, pick an accent color, set the workspace root directory, and adjust the maximum concurrent sessions. A "Remove Machine" button in the danger zone lets you disconnect the machine permanently.
+    </div>
+    <div class="mockup-wrapper" onclick="openLightbox(this)">
+      <div class="mockup-hint">Click to enlarge</div>
+      <div class="m-app" style="position: relative;">
+        <div class="m-sidebar" style="opacity: 0.3;">
+          <div class="m-sidebar-brand">PromptFlow</div>
+          <nav></nav>
+          <div class="m-sidebar-footer"><div class="m-nav-link active">Machines (2)</div></div>
+        </div>
+        <div class="m-main" style="opacity: 0.3;"></div>
+        <div class="m-overlay">
+          <div class="m-modal" style="width: 400px;">
+            <h3>Edit Machine</h3>
+            <div style="margin-top: 14px;">
+              <div class="m-field">
+                <div class="m-label">Name</div>
+                <input class="m-input" value="Office MacBook Pro" readonly>
+              </div>
+              <div class="m-field">
+                <div class="m-label">Color</div>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  <span class="m-swatch selected" style="background: #7c5cfc;"></span>
+                  <span class="m-swatch" style="background: #4caf80;"></span>
+                  <span class="m-swatch" style="background: #e0a030;"></span>
+                  <span class="m-swatch" style="background: #e05555;"></span>
+                  <span class="m-swatch" style="background: #3b82f6;"></span>
+                  <span class="m-swatch" style="background: #ec4899;"></span>
+                  <span class="m-swatch" style="background: #06b6d4;"></span>
+                  <span class="m-swatch" style="background: #f97316;"></span>
+                </div>
+              </div>
+              <div class="m-field">
+                <div class="m-label">Workspace Root</div>
+                <input class="m-input" value="/Users/dave/Projects" readonly>
+                <div style="font-size: 10px; color: var(--text-muted); margin-top: 3px;">Default working directory for sessions on this machine</div>
+              </div>
+              <div class="m-field">
+                <div class="m-label">Max Concurrent Sessions</div>
+                <div class="m-input" style="width: 80px; text-align: center;">5</div>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                <div class="m-btn m-btn-outline-danger m-btn-sm" style="padding: 5px 12px; font-size: 12px;">Remove Machine</div>
+                <div style="display: flex; gap: 8px;">
+                  <div class="m-btn m-btn-secondary">Cancel</div>
+                  <div class="m-btn m-btn-primary">Save</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- STEP 15 -->
+  <!-- ============================================================ -->
+  <div class="step-section" id="step-15">
+    <div class="step-header">
+      <div class="step-number">15</div>
+      <div class="step-title">View Session History by Machine</div>
+    </div>
+    <div class="step-description">
+      The History page shows all past prompt executions organized by task. Each entry can include a machine badge indicating which machine ran the session. Use the group filter dropdown to narrow results. Click any row to expand and see the full rendered prompt, variables, and attached images.
+    </div>
+    <div class="mockup-wrapper" onclick="openLightbox(this)">
+      <div class="mockup-hint">Click to enlarge</div>
+      <div class="m-app">
+        <div class="m-sidebar">
+          <div class="m-sidebar-brand">PromptFlow <span class="ws-dot"></span></div>
+          <nav>
+            <div class="m-nav-link">Tasks</div>
+            <div class="m-nav-section">Template Library</div>
+            <div class="m-nav-link">API Design</div>
+            <div class="m-nav-link">Code Review</div>
+          </nav>
+          <div class="m-sidebar-footer">
+            <div class="m-nav-link">Sessions</div>
+            <div class="m-nav-link">Machines (2)</div>
+            <div class="m-nav-link active">History</div>
+            <div class="m-nav-link">Manual</div>
+          </div>
+        </div>
+        <div class="m-main" style="max-width: 660px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+            <div style="font-size: 18px; font-weight: 700;">Prompt History</div>
+            <div class="m-select">All Groups &#9660;</div>
+          </div>
+
+          <!-- Task group header -->
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: var(--bg-secondary); border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 14px; font-weight: 700;">Fix Authentication Flow</span>
+              <span class="m-badge" style="background: var(--accent-light); color: var(--accent);">3 prompts</span>
+              <span style="font-size: 10px; color: var(--text-muted);">open task</span>
+            </div>
+            <span style="font-size: 11px; color: var(--text-muted);">&#9650;</span>
+          </div>
+
+          <!-- History entries -->
+          <div style="padding-left: 10px; display: flex; flex-direction: column; gap: 5px;">
+            <div class="m-history-row">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 12px; font-weight: 600;">Security Audit</span>
+                <span class="m-badge" style="background: var(--accent-light); color: var(--accent); font-size: 9px;">Code Review</span>
+                <span class="m-badge" style="background: rgba(124,92,252,0.1); color: #7c5cfc; font-size: 9px; gap: 3px;"><span class="m-status-dot" style="width: 5px; height: 5px; background: #7c5cfc;"></span>Office MacBook Pro</span>
+              </div>
+              <span style="font-size: 10px; color: var(--text-muted);">4/5/2026, 2:30 PM</span>
+            </div>
+            <div class="m-history-row">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 12px; font-weight: 600;">Token Refresh Fix</span>
+                <span class="m-badge" style="background: var(--accent-light); color: var(--accent); font-size: 9px;">Code Review</span>
+                <span class="m-badge" style="background: rgba(124,92,252,0.1); color: #7c5cfc; font-size: 9px; gap: 3px;"><span class="m-status-dot" style="width: 5px; height: 5px; background: #7c5cfc;"></span>Office MacBook Pro</span>
+              </div>
+              <span style="font-size: 10px; color: var(--text-muted);">4/5/2026, 1:45 PM</span>
+            </div>
+            <div class="m-history-row">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 12px; font-weight: 600;">Password Hashing Audit</span>
+                <span class="m-badge" style="background: var(--accent-light); color: var(--accent); font-size: 9px;">Code Review</span>
+                <span class="m-badge" style="background: rgba(59,130,246,0.1); color: #3b82f6; font-size: 9px; gap: 3px;"><span class="m-status-dot" style="width: 5px; height: 5px; background: #3b82f6;"></span>Build Server</span>
+              </div>
+              <span style="font-size: 10px; color: var(--text-muted);">4/4/2026, 5:12 PM</span>
+            </div>
+          </div>
+
+          <!-- Second task group (collapsed) -->
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: var(--bg-secondary); border-radius: var(--radius); border: 1px solid var(--border); margin-top: 14px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 14px; font-weight: 700;">API Endpoint Design</span>
+              <span class="m-badge" style="background: var(--accent-light); color: var(--accent);">5 prompts</span>
+            </div>
+            <span style="font-size: 11px; color: var(--text-muted);">&#9660;</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div style="text-align: center; padding: 40px 0 20px; border-top: 1px solid var(--border); margin-top: 40px;">
+    <div style="font-size: 14px; font-weight: 600; margin-bottom: 6px;">PromptFlow Machine Setup Guide</div>
+    <div style="font-size: 12px; color: var(--text-muted);">Generated for PromptFlow v1.0 &mdash; Last updated April 2026</div>
+  </div>
+
+</div>
+
+<!-- Lightbox overlay -->
+<div class="lightbox-overlay" id="lightbox" onclick="closeLightbox(event)">
+  <button class="lightbox-close" onclick="closeLightbox(event)">&times;</button>
+  <div class="lightbox-content" id="lightbox-content"></div>
+</div>
+
+<script>
+  function openLightbox(wrapper) {
+    const lb = document.getElementById('lightbox');
+    const content = document.getElementById('lightbox-content');
+    // Clone the mockup content (skip the hint)
+    const clone = wrapper.cloneNode(true);
+    // Remove the hint and click handler
+    const hint = clone.querySelector('.mockup-hint');
+    if (hint) hint.remove();
+    clone.style.cursor = 'default';
+    clone.removeAttribute('onclick');
+    clone.style.border = 'none';
+    clone.style.boxShadow = 'none';
+    clone.style.borderRadius = '0';
+    clone.style.maxWidth = '1100px';
+    clone.style.width = '100%';
+    content.innerHTML = '';
+    content.appendChild(clone);
+    lb.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox(e) {
+    // Only close if clicking overlay or close button, not the content itself
+    if (e.target.id === 'lightbox' || e.target.classList.contains('lightbox-close')) {
+      document.getElementById('lightbox').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+  }
+
+  // ESC key to close
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      document.getElementById('lightbox').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+  });
+</script>
+
+</body>
+</html>
