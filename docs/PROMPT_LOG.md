@@ -47,3 +47,11 @@
 ### 2026-04-05 — Build backend test suite for orchestrator (`feature/claude-orchestrator`)
 
 > You are building the backend test suite for the PromptManager Claude Code orchestrator. Work in `/Users/cubev/01_Repositories/PromptManager-worktrees/claude-orchestrator/services/backend/`. [10-task specification: update requirements.txt with test deps, create pytest.ini, create tests/conftest.py with SQLite async engine, create test_health.py, test_groups.py, test_templates.py, test_renderer.py, test_sessions.py with mocked sidecar, test_sidecar_client.py circuit breaker tests, test_websocket.py]
+
+### 2026-04-06 08:43 — Multi-machine CLI orchestration brainstorm + manual update (`feature/claude-orchestrator`)
+
+> update the manual (http://192.168.2.188:3001/manual) and explain in detail how the interaction and monitoring with my local claude code cli works. i have multiple computers (mac and windows) on which i am locally running claude code cli and i want to manage and monitor this with the prompt manager. spawn your expert agent team to brainstorm on what is the best approach to do this. create a first draft of an technical approach how to solve this and then let the expert team review it and give feedback with topics to be improved. redo these iterative 10 times and track each version in an interactive html file and track the changes and the improvements.
+
+### 2026-04-05 — Update user manual and help content for orchestrator docs (`feature/claude-orchestrator`)
+
+> Update the PromptFlow user manual and help content to document the Claude Code CLI orchestration feature. Work in `/Users/cubev/01_Repositories/PromptManager-worktrees/claude-orchestrator/`. [Update USER_MANUAL.md with sections 13 (Claude Code Sessions) and 14 (Multi-Machine Orchestration), update helpContent.ts with sessions and machines help entries, update ManualPage.tsx sectionMockups, update sections 1 and 12, update TOC and last-updated date]

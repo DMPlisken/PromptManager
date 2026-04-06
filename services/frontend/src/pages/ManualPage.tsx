@@ -14,6 +14,8 @@ const sectionMockups: Record<string, ReactNode> = {
   "executions": <MockToast />,
   "history": null,
   "docker": null,
+  "sessions": null,
+  "machines": null,
 };
 
 export default function ManualPage() {

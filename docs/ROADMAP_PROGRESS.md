@@ -119,6 +119,12 @@
 - [x] Frontend: App.tsx — /sessions route added
 - [x] Frontend: GroupPage — "Send to Claude" button in preview pane
 
+### Completed (Documentation)
+- [x] Docs: USER_MANUAL.md updated with Claude Code Sessions (section 13) and Multi-Machine Orchestration (section 14)
+- [x] Docs: helpContent.ts updated with "sessions" and "machines" help sections
+- [x] Docs: ManualPage.tsx updated with sectionMockups entries for new sections
+- [x] Docs: USER_MANUAL.md sections 1 and 12 updated to document the orchestrator sidecar setup
+
 ### Pending (Future Enhancements)
 - [ ] Frontend: Markdown rendering for assistant messages
 - [ ] Frontend: Code block syntax highlighting

@@ -1,7 +1,7 @@
 # PromptFlow — User Manual
 
 **Version:** 2.0
-**Last updated:** 2026-04-04
+**Last updated:** 2026-04-06
 
 > **Note:** This manual is also available interactively inside the app. Click the **"Manual"** link in the sidebar or click any **"?"** button next to a section header for context-specific help. The interactive manual and this file are kept in sync — the source of truth is `src/data/helpContent.ts`.
 
@@ -21,6 +21,8 @@
 10. [Browsing Execution History](#10-browsing-execution-history)
 11. [Typical Workflows](#11-typical-workflows)
 12. [Docker Commands Reference](#12-docker-commands-reference)
+13. [Claude Code Sessions](#13-claude-code-sessions)
+14. [Multi-Machine Orchestration (Coming Soon)](#14-multi-machine-orchestration-coming-soon)
 
 ---
 
@@ -46,6 +48,17 @@ This starts three containers:
 | Database  | localhost:5433              | PostgreSQL 16          |
 
 Open **http://localhost:3003** in your browser.
+
+### Claude Code Orchestrator (Optional Sidecar)
+
+To use the **Claude Code Sessions** feature (see [Section 13](#13-claude-code-sessions)), start the orchestrator sidecar on your host machine:
+
+```bash
+cd services/orchestrator
+./run.sh
+```
+
+The sidecar runs on **http://localhost:9100** and manages Claude Code CLI subprocesses. It communicates with the backend over a shared secret (`SIDECAR_SECRET` in `.env`). The sidecar must run on the same machine where Claude Code CLI is installed — it is **not** containerized.
 
 ### Stopping the Application
 
@@ -321,3 +334,156 @@ DB_PORT=5433
 ```
 
 Change these if they conflict with other services on your machine.
+
+### Orchestrator Sidecar
+
+The orchestrator sidecar runs **outside Docker** on your host machine. It manages Claude Code CLI subprocesses and streams output to the backend via SSE.
+
+| Command | Purpose |
+|---------|---------|
+| `cd services/orchestrator && ./run.sh` | Start the sidecar (port 9100) |
+| `make sidecar-start` | Start the sidecar via Makefile |
+| `make sidecar-stop` | Stop the sidecar |
+| `make sidecar-logs` | View sidecar logs |
+| `curl http://localhost:9100/health` | Check sidecar health |
+
+The sidecar requires `claude` CLI to be installed and available in your `PATH`. Configure the sidecar secret and URL in `.env`:
+
+```
+ORCHESTRATOR_URL=http://host.docker.internal:9100
+SIDECAR_SECRET=your-shared-secret
+```
+
+---
+
+## 13. Claude Code Sessions
+
+Sessions let you send rendered prompts directly to Claude Code CLI and see the output in real-time, right in your browser. Instead of copying a prompt and pasting it into a terminal, you can launch a Claude Code session from within PromptFlow and watch it work.
+
+### Creating a Session
+
+There are two ways to start a session:
+
+1. **From a group page:** After filling variables and previewing a prompt, click the **"Send to Claude"** button (next to "Copy to Clipboard" in the prompt preview pane).
+2. **From the Sessions page:** Click **"+ New Session"** in the top bar.
+
+When creating a session, configure:
+
+- **Prompt text** — Pre-filled from the rendered prompt if launched from a group.
+- **Working directory** — The directory Claude Code will operate in.
+- **Model** — Choose Sonnet, Opus, or Haiku.
+- **Session name** — A label for the sidebar (optional, auto-generated if blank).
+- **Permission mode** — Controls tool approval behavior.
+
+### Session Lifecycle
+
+Each session moves through these states:
+
+| Status | Meaning |
+|--------|---------|
+| `starting` | Session is being created, CLI process is spawning |
+| `running` | Claude is actively working, streaming output |
+| `waiting_approval` | Claude wants to use a tool (edit a file, run a command) and needs your approval |
+| `completed` | Claude finished the task |
+| `failed` | An error occurred (CLI crash, timeout, etc.) |
+
+### The Sessions Page
+
+- **Tab bar** (top) — Each active session has a tab. Click to switch between sessions. The active tab shows a colored status indicator.
+- **Terminal output** (center) — Scrollable message area showing Claude's work in real-time:
+  - **Text responses** appear as terminal-style messages.
+  - **Tool calls** (file edits, bash commands) appear as collapsible cards showing the tool name and input.
+  - **Tool results** show the outcome of each tool execution.
+  - **Errors** are highlighted in red.
+- **Session sidebar** (right) — Lists all sessions (active and completed) with status badges, timestamps, and session names.
+
+### Tool Approval
+
+When Claude wants to modify files or run commands, the session enters the `waiting_approval` state:
+
+1. An **approval card** appears in the terminal output showing the tool name, input, and what Claude intends to do.
+2. Click **Approve** (or press **Y**) to allow the action.
+3. Click **Deny** (or press **N**) to reject it. Claude will be told the action was denied and may try an alternative approach.
+4. Approvals **time out after 5 minutes** — if you don't respond, the action is auto-denied.
+
+### Session History
+
+All sessions are persisted with their full message history:
+
+- Completed sessions remain in the sidebar for review.
+- Click any past session to see its full transcript.
+- Sessions are linked to the group and template they were launched from (if applicable).
+
+### Session Management
+
+- **Multiple sessions** can run simultaneously (each in its own tab).
+- Use the **Abort** button to stop a running session. The CLI subprocess is terminated.
+- Use the **Delete** button to remove a session from the sidebar and database.
+
+### Connection Status
+
+The **colored dot** in the sidebar header shows the WebSocket connection state:
+
+- **Green** = Connected. Messages stream in real-time.
+- **Yellow** = Reconnecting. The browser is attempting to re-establish the connection.
+- **Red** = Disconnected. Check your network or restart the backend.
+
+Sessions continue running on the server even if your browser disconnects temporarily. When you reconnect, the message history is synced automatically.
+
+---
+
+## 14. Multi-Machine Orchestration (Coming Soon)
+
+> **Status:** Planned feature. Not yet implemented.
+
+Multi-machine orchestration will let you manage Claude Code CLI sessions across multiple computers from one PromptFlow dashboard.
+
+### Vision
+
+Today, the orchestrator sidecar runs on the same machine as your Docker stack. The multi-machine extension lets you install lightweight **agents** on remote workstations (Mac, Windows, Linux) that connect back to the PromptFlow server. You can then dispatch sessions to any connected machine from the web UI.
+
+### Agent Concept
+
+- A lightweight background process installed on each workstation.
+- The agent connects **outbound** to the PromptFlow server — no firewall or port-forwarding configuration needed on the workstation.
+- Each agent manages local Claude Code CLI subprocesses and relays output back to the server.
+- Agents report health metrics (CPU, memory, active session count) at regular intervals.
+
+### Machine Registration
+
+1. Install the agent on the target workstation.
+2. Run the pairing command — the agent contacts the server and registers itself.
+3. The machine appears on the **Machines** dashboard in the web UI.
+4. Approve the machine from the dashboard to allow it to receive sessions.
+
+### Machine Dashboard
+
+The Machines page will show:
+
+- All connected machines with their hostname, OS, and status (online/offline).
+- Health metrics: CPU usage, memory usage, number of active sessions.
+- Last heartbeat timestamp.
+- Quick actions: pause (stop accepting new sessions), remove, view sessions.
+
+### Session Dispatch
+
+When creating a new session, you will be able to:
+
+- **Choose a specific machine** from a dropdown.
+- **Auto-select** the least-loaded machine (based on active session count and resource usage).
+- Sessions are routed to the selected machine's agent, which spawns the Claude Code CLI subprocess locally.
+
+### Cross-Platform Support
+
+The agent will work on:
+
+- **macOS** — Native support for Apple Silicon and Intel.
+- **Windows** — Runs as a background service or tray application.
+- **Linux** — Runs as a systemd service or standalone process.
+
+### Security
+
+- **API key authentication** — Each agent authenticates with a unique API key issued during pairing.
+- **Workspace restrictions** — Per-machine configuration limits which directories Claude Code can access.
+- **TLS** — Agent-to-server communication is encrypted.
+- **Revocation** — Remove a machine from the dashboard to immediately revoke its access.
