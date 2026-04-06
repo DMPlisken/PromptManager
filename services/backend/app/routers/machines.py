@@ -477,7 +477,7 @@ async def test_machine(machine_id: int, db: AsyncSession = Depends(get_db)):
 
         output_text = "\n".join(
             msg.content for msg in messages
-            if msg.role in ("assistant", "result") and msg.content
+            if msg.content
         )
 
         return {
