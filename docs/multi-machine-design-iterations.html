@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Machine Orchestration — Design Iterations</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #1a1b2e;
+  --card: #232440;
+  --accent: #7c5cfc;
+  --accent-hover: #9478ff;
+  --text: #e8e8f0;
+  --text-dim: #a0a0b8;
+  --text-muted: #6a6a88;
+  --border: #3a3b5a;
+  --green: #4ade80;
+  --sidebar-w: 220px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  padding: 20px 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-header h2 {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.progress-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--green);
+  border-radius: 2px;
+}
+
+.progress-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.version-list {
+  list-style: none;
+  padding: 8px 0;
+  flex: 1;
+}
+
+.version-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 150ms ease;
+  border-left: 3px solid transparent;
+}
+
+.version-item:hover {
+  background: rgba(124, 92, 252, 0.08);
+}
+
+.version-item.active {
+  background: rgba(124, 92, 252, 0.12);
+  border-left-color: var(--accent);
+}
+
+.version-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+}
+
+.version-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.version-num {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.version-title {
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===== MAIN ===== */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.main-header {
+  padding: 20px 28px 0;
+}
+
+.main-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.main-header h1 span {
+  color: var(--accent);
+}
+
+.main-header p {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+}
+
+.tab {
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 150ms ease;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+
+.tab:hover {
+  color: var(--text-dim);
+}
+
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Content area */
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px;
+}
+
+.content-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+}
+
+.content-card h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.content-card h2 .badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: rgba(74, 222, 128, 0.15);
+  color: var(--green);
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+.content-card .subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 18px;
+}
+
+.content-card h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 16px 0 8px;
+}
+
+.content-card h3:first-of-type {
+  margin-top: 0;
+}
+
+.content-card p, .content-card li {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-dim);
+}
+
+.content-card ul {
+  list-style: none;
+  padding: 0;
+}
+
+.content-card ul li {
+  padding: 4px 0 4px 18px;
+  position: relative;
+}
+
+.content-card ul li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.6;
+}
+
+/* Changes tab */
+.change-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(58, 59, 90, 0.5);
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.change-item:last-child {
+  border-bottom: none;
+}
+
+.change-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  background: rgba(124, 92, 252, 0.15);
+  color: var(--accent);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <h2>Versions</h2>
+    <div class="progress-bar"><div class="progress-fill"></div></div>
+    <div class="progress-label">10 / 10 complete (100%)</div>
+  </div>
+  <ul class="version-list" id="versionList"></ul>
+</aside>
+
+<main class="main">
+  <div class="main-header">
+    <h1 id="mainTitle">Multi-Machine <span>Orchestration</span></h1>
+    <p id="mainSubtitle">Design iteration tracker — all 10 versions complete</p>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-tab="design" onclick="switchTab('design')">Design</button>
+    <button class="tab" data-tab="changes" onclick="switchTab('changes')">Changes</button>
+  </div>
+  <div class="content-area">
+    <div class="content-card" id="contentCard"></div>
+  </div>
+</main>
+
+<script>
+const versions = [
+  {
+    v: 1, title: "Initial Architecture", status: "complete",
+    content: `
+      <h3>Core Pattern</h3>
+      <p>Reverse-proxy WebSocket architecture. Agents on workstations initiate outbound connections to the central server, avoiding inbound firewall rules.</p>
+      <h3>Agent Runtime</h3>
+      <ul>
+        <li>Node.js agent package (<code>@promptflow/agent</code>) installed on each machine</li>
+        <li>Pairing with 6-character alphanumeric code displayed in the web UI</li>
+        <li>Agent spawns Claude CLI locally via <code>child_process</code>, streams stdout/stderr to server over WebSocket</li>
+      </ul>
+      <h3>Data Model Changes</h3>
+      <ul>
+        <li>New table: <strong>machines</strong> — id, name, fingerprint, status, last_seen</li>
+        <li>New table: <strong>agent_api_keys</strong> — hashed key, machine_id, scopes, expiry</li>
+        <li><strong>claude_sessions</strong> gains <code>machine_id</code> FK to track which machine runs each session</li>
+      </ul>
+      <h3>Communication Flow</h3>
+      <p>Browser &rarr; Server (HTTP/WS) &rarr; Agent (WS outbound) &rarr; Claude CLI (local process). All messages are JSON-framed with type, payload, and correlation ID.</p>
+    `,
+    changes: [
+      "Defined reverse-proxy WebSocket architecture",
+      "Designed @promptflow/agent Node.js package",
+      "Added 6-char pairing code flow",
+      "Agent spawns Claude CLI locally, streams output via WS",
+      "New tables: machines, agent_api_keys",
+      "claude_sessions gains machine_id FK"
+    ]
+  },
+  {
+    v: 2, title: "Security", status: "complete",
+    content: `
+      <h3>Transport Security</h3>
+      <ul>
+        <li>TLS required for all WebSocket connections (<code>wss://</code>), plain <code>ws://</code> rejected in production</li>
+        <li>Certificate pinning optional for enterprise deployments</li>
+      </ul>
+      <h3>Authentication &amp; Authorization</h3>
+      <ul>
+        <li>API key rotation: keys expire after configurable TTL, agent auto-requests renewal</li>
+        <li>Machine fingerprint verification on every reconnect (hardware ID + OS identifier)</li>
+        <li>Rate-limit agent registrations: max 5 pairing attempts per IP per hour</li>
+      </ul>
+      <h3>Operational Security</h3>
+      <ul>
+        <li>Audit logging: all agent connect/disconnect, session start/stop, approval events</li>
+        <li>Workspace symlink protection: agent refuses to follow symlinks outside approved directories</li>
+        <li>Scoped permissions per agent key: read-only, execute, admin</li>
+      </ul>
+    `,
+    changes: [
+      "Enforced TLS (wss://) for all connections",
+      "Added API key rotation with configurable TTL",
+      "Machine fingerprint verification on reconnect",
+      "Rate-limited agent registrations (5/hr per IP)",
+      "Audit logging for all agent lifecycle events",
+      "Workspace symlink protection"
+    ]
+  },
+  {
+    v: 3, title: "Reliability", status: "complete",
+    content: `
+      <h3>Heartbeat System</h3>
+      <ul>
+        <li>Heartbeat coalescing: multiple agents share a single heartbeat interval window to reduce server load</li>
+        <li>Connection timeout detection with configurable thresholds (default 30s warn, 60s disconnect)</li>
+      </ul>
+      <h3>Session Continuity</h3>
+      <ul>
+        <li>Session handoff when a machine goes offline: tasks can be reassigned to another available machine</li>
+        <li>Message buffering during reconnect: server queues up to 1000 messages for 5 minutes</li>
+      </ul>
+      <h3>Data Management</h3>
+      <ul>
+        <li>Database partitioning for metrics tables by month — keeps queries fast as data grows</li>
+        <li>Connection state stored in Redis for fast failover between server instances</li>
+      </ul>
+    `,
+    changes: [
+      "Heartbeat coalescing to reduce server load",
+      "Connection timeout detection (30s warn, 60s drop)",
+      "Session handoff on machine offline",
+      "Message buffering during reconnect (1000 msgs, 5 min)",
+      "Database partitioning for metrics by month",
+      "Connection state in Redis for failover"
+    ]
+  },
+  {
+    v: 4, title: "Error Recovery", status: "complete",
+    content: `
+      <h3>Agent Crash Recovery</h3>
+      <ul>
+        <li>PID file tracking: agent writes PID on start, checks for stale PID on restart</li>
+        <li><code>boot_id</code> reconciliation: detect OS reboot vs. agent-only crash by comparing Linux/macOS boot ID</li>
+        <li>Orphaned process cleanup: on startup, agent kills any Claude CLI processes from a previous agent instance</li>
+      </ul>
+      <h3>Cross-Machine Resilience</h3>
+      <ul>
+        <li>Approval timeouts across machines: if approver's machine is offline, timeout escalates to next approver</li>
+        <li>Circuit breaker per machine: after 3 consecutive failures, machine is marked degraded and tasks re-routed</li>
+      </ul>
+      <h3>Recovery Protocol</h3>
+      <ul>
+        <li>Agent sends recovery report on reconnect: last known state, pending operations, local queue depth</li>
+        <li>Server reconciles agent state with its own records before resuming operations</li>
+      </ul>
+    `,
+    changes: [
+      "PID file tracking for crash detection",
+      "boot_id reconciliation (reboot vs crash)",
+      "Orphaned Claude CLI process cleanup on startup",
+      "Approval timeout escalation across machines",
+      "Circuit breaker per machine (3 failures = degraded)",
+      "Recovery report on reconnect with state reconciliation"
+    ]
+  },
+  {
+    v: 5, title: "Cross-Platform", status: "complete",
+    content: `
+      <h3>Windows Support</h3>
+      <ul>
+        <li><code>child_process.spawn</code> with <code>shell: true</code> and PATHEXT handling for <code>.cmd</code>/<code>.bat</code> executables</li>
+        <li>Windows Service integration via <code>node-windows</code> for background agent operation</li>
+        <li>PowerShell installer script: one-liner to download, configure, and register the agent</li>
+      </ul>
+      <h3>macOS Support</h3>
+      <ul>
+        <li><code>launchd</code> plist for auto-start on login, with proper <code>KeepAlive</code> and crash restart</li>
+        <li>Homebrew formula planned for future distribution</li>
+      </ul>
+      <h3>Normalization</h3>
+      <ul>
+        <li>Path normalization layer: forward slashes internally, OS-native on output</li>
+        <li>Signal handling differences: SIGTERM/SIGINT on Unix, ControlC event on Windows</li>
+        <li>Temp directory and home directory resolution per platform</li>
+      </ul>
+    `,
+    changes: [
+      "Windows child_process.spawn with shell:true + PATHEXT",
+      "Windows Service via node-windows",
+      "PowerShell one-liner installer",
+      "macOS launchd plist for auto-start",
+      "Path normalization (forward slash internal)",
+      "Platform-specific signal handling"
+    ]
+  },
+  {
+    v: 6, title: "Protocol", status: "complete",
+    content: `
+      <h3>Version Negotiation</h3>
+      <ul>
+        <li>Client sends supported protocol versions on connect; server selects highest compatible version</li>
+        <li>Graceful degradation: older agents get reduced feature set rather than disconnection</li>
+      </ul>
+      <h3>Message Optimization</h3>
+      <ul>
+        <li>Compressed heartbeats: delta-only payloads (CPU/mem changes since last beat), not full snapshots</li>
+        <li>Batched output messages: agent buffers Claude CLI output for 50ms, sends as single frame</li>
+        <li>Binary framing option for high-throughput sessions</li>
+      </ul>
+      <h3>Correctness</h3>
+      <ul>
+        <li>Shared TypeScript types between agent and server — single source of truth</li>
+        <li>Idempotency tokens on all mutating operations to handle retry safely</li>
+        <li>Message deduplication on reconnect using sliding window of recent message IDs</li>
+      </ul>
+    `,
+    changes: [
+      "Protocol version negotiation on connect",
+      "Delta-only compressed heartbeats",
+      "Batched output messages (50ms buffer window)",
+      "Shared TypeScript types (single source of truth)",
+      "Idempotency tokens on all mutations",
+      "Message dedup via sliding window on reconnect"
+    ]
+  },
+  {
+    v: 7, title: "UX", status: "complete",
+    content: `
+      <h3>Dashboard</h3>
+      <ul>
+        <li>Simplified dashboard designed for 2-3 machines (typical setup), scales to ~10</li>
+        <li>Health sparklines: tiny inline charts showing CPU/memory over last hour per machine</li>
+        <li>Machine status cards with live connection indicator and current task</li>
+      </ul>
+      <h3>Smart Routing</h3>
+      <ul>
+        <li>Auto-select machine by workspace match: if a task's project directory exists on a machine, prefer it</li>
+        <li>Manual override always available via dropdown</li>
+      </ul>
+      <h3>Interaction</h3>
+      <ul>
+        <li>Toast notifications for agent connect/disconnect and task completion</li>
+        <li>Keyboard shortcuts: <kbd>Ctrl+1-9</kbd> to select machine, <kbd>Ctrl+Enter</kbd> to approve</li>
+        <li>Approval queue with machine context: shows which machine is requesting, what command, which directory</li>
+      </ul>
+    `,
+    changes: [
+      "Simplified multi-machine dashboard (2-3 machines focus)",
+      "Smart auto-select by workspace directory match",
+      "Toast notifications for agent lifecycle events",
+      "Health sparklines (CPU/mem, last hour)",
+      "Keyboard shortcuts for machine selection + approval",
+      "Approval queue with full machine context"
+    ]
+  },
+  {
+    v: 8, title: "DevEx", status: "complete",
+    content: `
+      <h3>Distribution</h3>
+      <ul>
+        <li>Standalone binary via <code>pkg</code>: single executable, no Node.js install required on target machine</li>
+        <li>Auto-update: agent checks server for new versions on startup, downloads and restarts if available</li>
+        <li>Server-hosted install scripts: <code>curl -sL https://server/install | bash</code></li>
+      </ul>
+      <h3>Debugging</h3>
+      <ul>
+        <li>Remote log viewing: stream agent logs in the web UI without SSH access</li>
+        <li>Diagnostics endpoint: <code>/agent/diagnostics</code> returns system info, connection state, recent errors</li>
+        <li>Version compatibility check: server warns if agent version is too old</li>
+      </ul>
+      <h3>Onboarding</h3>
+      <ul>
+        <li>Setup wizard: interactive terminal flow — enter server URL, paste pairing code, select workspace directories</li>
+        <li>Config file in <code>~/.promptflow/agent.json</code> with sensible defaults</li>
+      </ul>
+    `,
+    changes: [
+      "Standalone binary distribution via pkg",
+      "Auto-update from server on agent startup",
+      "Server-hosted install scripts (curl | bash)",
+      "Remote log streaming in web UI",
+      "Version compatibility check and warnings",
+      "Interactive setup wizard for onboarding"
+    ]
+  },
+  {
+    v: 9, title: "Workflow", status: "complete",
+    content: `
+      <h3>Machine Preferences</h3>
+      <ul>
+        <li>Preferred machine per prompt group: e.g., "Design" tasks always go to the Mac, "Backend" to the Linux server</li>
+        <li>Machine tags (e.g., <code>gpu</code>, <code>high-mem</code>, <code>frontend</code>) for rule-based routing</li>
+      </ul>
+      <h3>Task Management</h3>
+      <ul>
+        <li>"Send to Machine" action from the task page — one-click dispatch to a specific machine</li>
+        <li>Re-run on different machine: retry a failed task on another machine without re-entering parameters</li>
+      </ul>
+      <h3>History &amp; Reporting</h3>
+      <ul>
+        <li>Execution history grouped by machine: filter and view which machine ran what</li>
+        <li>Cost tracking by machine: token usage and estimated cost per machine over time</li>
+        <li>Machine utilization report: idle time, active time, tasks completed</li>
+      </ul>
+    `,
+    changes: [
+      "Preferred machine per prompt group",
+      "Machine tags for rule-based routing",
+      "Send to Machine action from task page",
+      "Re-run on different machine capability",
+      "History grouped/filtered by machine",
+      "Cost and utilization tracking per machine"
+    ]
+  },
+  {
+    v: 10, title: "Production", status: "complete",
+    content: `
+      <h3>Observability</h3>
+      <ul>
+        <li>Prometheus metrics exported from agents: connection uptime, task duration, CLI spawn count, error rate</li>
+        <li>Distributed tracing: trace IDs flow from browser through server to agent to CLI invocation</li>
+        <li>SLA monitoring: track and alert on p95 task start latency and agent availability</li>
+      </ul>
+      <h3>Cost &amp; Capacity</h3>
+      <ul>
+        <li>Cost alerting: configurable thresholds per machine and per group, notifications via webhook</li>
+        <li>Capacity planning: dashboard shows projected machine utilization based on recent trends</li>
+      </ul>
+      <h3>Operations</h3>
+      <ul>
+        <li>Backup/restore for agent configurations: export and import machine settings as JSON</li>
+        <li>Upgrade runbook: documented zero-downtime agent upgrade procedure with rollback steps</li>
+        <li>Health check endpoints for load balancer integration</li>
+      </ul>
+    `,
+    changes: [
+      "Prometheus metrics from agents",
+      "Distributed tracing (browser to CLI)",
+      "SLA monitoring with p95 latency alerts",
+      "Cost alerting with configurable thresholds",
+      "Capacity planning dashboard",
+      "Backup/restore configs + upgrade runbook"
+    ]
+  }
+];
+
+let activeVersion = 0;
+let activeTab = "design";
+
+function renderSidebar() {
+  const list = document.getElementById("versionList");
+  list.innerHTML = versions.map((v, i) => `
+    <li class="version-item${i === activeVersion ? ' active' : ''}" onclick="selectVersion(${i})">
+      <div class="version-dot"></div>
+      <div class="version-label">
+        <span class="version-num">V${v.v}</span>
+        <span class="version-title">${v.title}</span>
+      </div>
+    </li>
+  `).join("");
+}
+
+function renderContent() {
+  const v = versions[activeVersion];
+  const card = document.getElementById("contentCard");
+
+  if (activeTab === "design") {
+    card.innerHTML = `
+      <h2>V${v.v}: ${v.title} <span class="badge">Complete</span></h2>
+      <div class="subtitle">Version ${v.v} of 10 — Multi-Machine Orchestration</div>
+      ${v.content}
+    `;
+  } else {
+    card.innerHTML = `
+      <h2>V${v.v}: ${v.title} — Changes <span class="badge">Complete</span></h2>
+      <div class="subtitle">${v.changes.length} changes in this version</div>
+      ${v.changes.map(c => `
+        <div class="change-item">
+          <div class="change-icon">+</div>
+          <div>${c}</div>
+        </div>
+      `).join("")}
+    `;
+  }
+}
+
+function selectVersion(i) {
+  activeVersion = i;
+  renderSidebar();
+  renderContent();
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll(".tab").forEach(t => {
+    t.classList.toggle("active", t.dataset.tab === tab);
+  });
+  renderContent();
+}
+
+// Keyboard navigation
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowDown" && activeVersion < versions.length - 1) {
+    selectVersion(activeVersion + 1);
+  } else if (e.key === "ArrowUp" && activeVersion > 0) {
+    selectVersion(activeVersion - 1);
+  }
+});
+
+// Init
+renderSidebar();
+renderContent();
+</script>
+</body>
+</html>
