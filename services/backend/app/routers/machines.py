@@ -416,6 +416,77 @@ Write-Host "  promptflow-agent service start" -ForegroundColor White
 """
 
 
+@router.post("/{machine_id}/test")
+async def test_machine(machine_id: int, db: AsyncSession = Depends(get_db)):
+    """Run a quick test prompt on a paired machine.
+
+    Dispatches a simple prompt to the machine's agent, waits for the response
+    (up to 30 seconds), and returns the output.
+    """
+    import asyncio
+    from app.services.session_manager import session_manager
+
+    machine = await db.get(Machine, machine_id)
+    if not machine:
+        raise HTTPException(404, "Machine not found")
+
+    if not agent_manager.is_online(machine.machine_uuid):
+        raise HTTPException(503, "Machine is offline")
+
+    test_prompt = 'Respond with exactly: "PromptFlow agent test successful! Machine is connected and Claude Code CLI is working." Do not add anything else.'
+
+    try:
+        # Create a test session
+        session = await session_manager.create_session(
+            db=db,
+            prompt=test_prompt,
+            working_directory=machine.workspace_root or "/tmp",
+            model="haiku",
+            machine_id=machine.id,
+            name=f"Test: {machine.name}",
+        )
+
+        # Wait for completion (poll session status, max 30s)
+        session_id = session.id
+        for _ in range(60):
+            await asyncio.sleep(0.5)
+            await db.refresh(session)
+            if session.status in (
+                SessionStatus.COMPLETED.value,
+                SessionStatus.FAILED.value,
+                SessionStatus.TERMINATED.value,
+            ):
+                break
+
+        # Collect output messages
+        from app.models.session_message import SessionMessage
+        result = await db.execute(
+            select(SessionMessage)
+            .where(SessionMessage.session_id == session_id)
+            .order_by(SessionMessage.sequence)
+            .limit(50)
+        )
+        messages = result.scalars().all()
+
+        output_text = "\n".join(
+            msg.content for msg in messages
+            if msg.role in ("assistant", "result") and msg.content
+        )
+
+        return {
+            "success": session.status == SessionStatus.COMPLETED.value,
+            "status": session.status,
+            "output": output_text or "(no output received)",
+            "session_id": session_id,
+            "machine_name": machine.name,
+            "message_count": len(messages),
+        }
+
+    except Exception as e:
+        logger.error("test_machine_failed", machine_id=machine_id, error=str(e))
+        raise HTTPException(500, f"Test failed: {str(e)}")
+
+
 @router.get("/install-script/{platform}", response_class=PlainTextResponse)
 async def get_install_script(platform: str):
     """Serve install script for mac or windows."""

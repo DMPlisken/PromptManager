@@ -198,6 +198,8 @@ export const api = {
     request<import("../types/machine").PairingCode>("/machines/pairing-code", { method: "POST" }),
   getInstallScript: (platform: string) =>
     request<{ script: string }>(`/machines/install-script/${platform}`),
+  testMachine: (id: number) =>
+    request<{ success: boolean; status: string; output: string; session_id: string; machine_name: string; message_count: number }>(`/machines/${id}/test`, { method: "POST" }),
 };
 
 export default api;

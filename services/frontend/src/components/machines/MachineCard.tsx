@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { api } from "../../api/client";
 import type { Machine, MachineStatus, MachinePlatform } from "../../types/machine";
 
 interface MachineCardProps {
@@ -99,6 +100,23 @@ export default function MachineCard({ machine, onEdit, onRemove }: MachineCardPr
   const [hovered, setHovered] = useState(false);
   const [lastSeen, setLastSeen] = useState(() => relativeTime(machine.last_seen_at));
   const timerRef = useRef<ReturnType<typeof setInterval>>();
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; status: string; output: string; machine_name: string; message_count: number } | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    setTestError(null);
+    try {
+      const result = await api.testMachine(machine.id);
+      setTestResult(result);
+    } catch (e: any) {
+      setTestError(e?.message || "Test failed");
+    } finally {
+      setTesting(false);
+    }
+  };
 
   // Update relative time every 10s
   useEffect(() => {
@@ -233,6 +251,20 @@ export default function MachineCard({ machine, onEdit, onRemove }: MachineCardPr
           {machine.status === "online" ? `Last seen ${lastSeen}` : machine.status === "pairing" ? "Waiting..." : `Offline \u00B7 ${lastSeen}`}
         </span>
         <div style={{ display: "flex", gap: 6 }}>
+          {machine.status === "online" && (
+            <button
+              onClick={handleTest}
+              disabled={testing}
+              style={{
+                ...smallBtnStyle,
+                color: testing ? "var(--text-muted)" : "var(--accent)",
+                borderColor: testing ? "var(--border)" : "var(--accent)",
+                cursor: testing ? "wait" : "pointer",
+              }}
+            >
+              {testing ? "Testing..." : "Test"}
+            </button>
+          )}
           <button onClick={() => onEdit(machine)} style={smallBtnStyle}>Edit</button>
           <button
             onClick={() => onRemove(machine)}
@@ -242,6 +274,82 @@ export default function MachineCard({ machine, onEdit, onRemove }: MachineCardPr
           </button>
         </div>
       </div>
+
+      {/* Test Result Popup */}
+      {(testResult || testError) && (
+        <>
+          <div
+            onClick={() => { setTestResult(null); setTestError(null); }}
+            style={{
+              position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000,
+            }}
+          />
+          <div style={{
+            position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+            background: "var(--bg-secondary)", border: "1px solid var(--border)",
+            borderRadius: "var(--radius-lg)", padding: 24, zIndex: 1001,
+            minWidth: 420, maxWidth: 600, boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700 }}>
+                Machine Test {testResult?.success ? "Passed" : "Failed"}
+              </h3>
+              <div style={{
+                width: 28, height: 28, borderRadius: "50%",
+                background: testResult?.success ? "var(--success)" : "var(--danger)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 14, color: "#fff", fontWeight: 700,
+              }}>
+                {testResult?.success ? "\u2713" : "\u2717"}
+              </div>
+            </div>
+
+            {testError && (
+              <div style={{
+                background: "rgba(224, 85, 85, 0.1)", border: "1px solid rgba(224, 85, 85, 0.3)",
+                borderRadius: "var(--radius)", padding: 12, marginBottom: 16,
+                fontSize: 13, color: "var(--danger)",
+              }}>
+                {testError}
+              </div>
+            )}
+
+            {testResult && (
+              <>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 6 }}>
+                  Machine: <strong style={{ color: "var(--text-primary)" }}>{testResult.machine_name}</strong>
+                  {" \u00B7 "}
+                  Status: <strong style={{ color: testResult.success ? "var(--success)" : "var(--danger)" }}>{testResult.status}</strong>
+                  {" \u00B7 "}
+                  Messages: {testResult.message_count}
+                </div>
+                <div style={{
+                  background: "var(--bg-card)", borderRadius: "var(--radius)",
+                  border: "1px solid var(--border)", padding: 16, marginTop: 12,
+                  fontFamily: "monospace", fontSize: 13, lineHeight: 1.6,
+                  color: "var(--text-primary)", whiteSpace: "pre-wrap",
+                  maxHeight: 300, overflowY: "auto",
+                }}>
+                  {testResult.output || "(no output)"}
+                </div>
+              </>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button
+                onClick={() => { setTestResult(null); setTestError(null); }}
+                style={{
+                  padding: "8px 20px", background: "var(--accent)", color: "#fff",
+                  border: "none", borderRadius: "var(--radius)", fontSize: 13,
+                  fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
