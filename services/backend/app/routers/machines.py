@@ -455,20 +455,15 @@ async def test_machine(machine_id: int, db: AsyncSession = Depends(get_db)):
 
         # Wait for completion (poll session status, max 30s)
         session_id = session.id
-        logger.info("test_polling_start", session_id=session_id, status=session.status)
-        for i in range(60):
+        for _ in range(60):
             await asyncio.sleep(0.5)
-            # Must expire and re-query to see changes from other connections
             db.expire(session)
             await db.refresh(session)
-            if i < 3 or i % 10 == 0:
-                logger.info("test_poll", session_id=session_id, status=session.status, iteration=i)
             if session.status in (
                 SessionStatus.COMPLETED.value,
                 SessionStatus.FAILED.value,
                 SessionStatus.TERMINATED.value,
             ):
-                logger.info("test_poll_done", session_id=session_id, status=session.status, iteration=i)
                 break
 
         # Collect output messages

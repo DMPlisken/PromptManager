@@ -353,11 +353,14 @@ class AgentConnectionManager:
         self, machine_uuid: str, msg: dict, db: AsyncSession
     ) -> None:
         """Update session status to failed and broadcast to browsers."""
+        from app.models.session_message import SessionMessage
         from app.services.session_manager import session_manager
 
         session_id = msg.get("sessionId")
         if not session_id:
             return
+
+        error_text = msg.get("error") or msg.get("errorMessage") or "Session failed on agent"
 
         result = await db.execute(
             select(ClaudeSession).where(ClaudeSession.id == session_id)
@@ -366,7 +369,17 @@ class AgentConnectionManager:
         if session:
             session.status = SessionStatus.FAILED.value
             session.ended_at = datetime.now(timezone.utc)
+            # Persist the error as a message so it's visible in history/test
+            db.add(SessionMessage(
+                session_id=session_id,
+                sequence=1,
+                role="system",
+                content=error_text,
+                message_type="error",
+            ))
             await db.commit()
+
+        logger.warning("agent_session_failed", session_id=session_id, machine_uuid=machine_uuid, error=error_text)
 
         await session_manager._broadcast(
             session_id,
@@ -375,7 +388,7 @@ class AgentConnectionManager:
                 "sessionId": session_id,
                 "error": {
                     "code": msg.get("errorCode", "AGENT_ERROR"),
-                    "message": msg.get("errorMessage", "Session failed on agent"),
+                    "message": error_text,
                     "retryable": False,
                 },
             },
