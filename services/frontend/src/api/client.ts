@@ -2,7 +2,7 @@ const API_BASE = "/api";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {};
-  if (options?.body) headers["Content-Type"] = "application/json";
+  if (options?.body && typeof options.body === "string") headers["Content-Type"] = "application/json";
   const res = await fetch(`${API_BASE}${path}`, {
     headers,
     ...options,
@@ -18,6 +18,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export const api = {
   // Groups
   getGroups: () => request<import("../types").PromptGroup[]>("/groups"),
+  getGroup: (id: number) => request<import("../types").PromptGroup>(`/groups/${id}`),
   createGroup: (data: { name: string; description?: string }) =>
     request<import("../types").PromptGroup>("/groups", { method: "POST", body: JSON.stringify(data) }),
   updateGroup: (id: number, data: { name?: string; description?: string }) =>
@@ -160,4 +161,27 @@ export const api = {
     request<import("../types").ExecutionImage[]>(`/images/execution/${executionId}`),
   deleteImage: (imageId: number) =>
     request<void>(`/images/${imageId}`, { method: "DELETE" }),
+
+  // Sessions (Claude Code Orchestrator)
+  getSessions: () =>
+    request<import("../types/session").ClaudeSession[]>("/sessions"),
+  createSession: (data: import("../types/session").SessionCreateRequest) =>
+    request<import("../types/session").ClaudeSession>("/sessions", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  getSession: (id: string) =>
+    request<import("../types/session").ClaudeSession>(`/sessions/${id}`),
+  deleteSession: (id: string) =>
+    request<void>(`/sessions/${id}`, { method: "DELETE" }),
+  getSessionMessages: (id: string, afterSequence?: number) => {
+    const qs = afterSequence !== undefined ? `?after=${afterSequence}` : "";
+    return request<import("../types/session").SessionMessage[]>(
+      `/sessions/${id}/messages${qs}`
+    );
+  },
+  checkSidecarHealth: () =>
+    request<{ status: string; version?: string }>("/sessions/sidecar/health"),
 };
+
+export default api;

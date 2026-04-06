@@ -1,0 +1,3790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code CLI Orchestrator — Design Iterations</title>
+<style>
+  /* ===== RESET & BASE ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-primary: #1a1b2e;
+    --bg-secondary: #232440;
+    --bg-tertiary: #2a2b4a;
+    --bg-hover: #2e2f52;
+    --border: #3a3b5a;
+    --border-light: #4a4b6a;
+    --accent: #7c5cfc;
+    --accent-hover: #9478ff;
+    --accent-dim: rgba(124, 92, 252, 0.15);
+    --accent-glow: rgba(124, 92, 252, 0.3);
+    --text-primary: #e8e8f0;
+    --text-secondary: #a0a0b8;
+    --text-muted: #6a6a88;
+    --green: #4ade80;
+    --green-dim: rgba(74, 222, 128, 0.15);
+    --yellow: #fbbf24;
+    --yellow-dim: rgba(251, 191, 36, 0.15);
+    --red: #f87171;
+    --red-dim: rgba(248, 113, 113, 0.15);
+    --gray: #6a6a88;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    --sidebar-width: 240px;
+    --right-panel-width: 320px;
+    --transition-fast: 150ms ease;
+    --transition-normal: 250ms ease;
+    --transition-slow: 400ms ease;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+  }
+
+  html { font-size: 15px; }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* ===== SCROLLBAR ===== */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+  /* ===== APP LAYOUT ===== */
+  .app {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+  }
+
+  /* ===== LEFT SIDEBAR ===== */
+  .sidebar {
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 10;
+  }
+
+  .sidebar-header {
+    padding: 20px 16px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .sidebar-logo-icon {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, var(--accent), #b794f6);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .sidebar-logo-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.2;
+  }
+
+  .sidebar-logo-sub {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .progress-bar-container { margin-top: 4px; }
+
+  .progress-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .progress-bar {
+    height: 4px;
+    background: var(--bg-primary);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #b794f6);
+    border-radius: 2px;
+    transition: width var(--transition-slow);
+  }
+
+  /* Search */
+  .search-container {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 8px 12px 8px 32px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: var(--font-sans);
+    outline: none;
+    transition: border-color var(--transition-fast);
+  }
+
+  .search-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-dim);
+  }
+
+  .search-input::placeholder { color: var(--text-muted); }
+
+  .search-wrapper { position: relative; }
+
+  .search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 12px;
+    pointer-events: none;
+  }
+
+  /* Version list */
+  .version-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+
+  .version-item {
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    margin-bottom: 2px;
+    border: 1px solid transparent;
+    position: relative;
+  }
+
+  .version-item:hover { background: var(--bg-hover); }
+
+  .version-item.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+  }
+
+  .version-item-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .version-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .version-dot.complete { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .version-dot.in-progress { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+  .version-dot.pending { background: var(--gray); }
+
+  .version-number {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .version-title {
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .version-date {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* ===== MAIN CONTENT ===== */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  /* Tab bar */
+  .tab-bar {
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    min-height: 46px;
+    gap: 0;
+  }
+
+  .tab {
+    padding: 12px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all var(--transition-fast);
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  .tab:hover { color: var(--text-secondary); }
+
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab-spacer { flex: 1; }
+
+  .right-panel-toggle {
+    padding: 6px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-family: var(--font-sans);
+  }
+
+  .right-panel-toggle:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  /* Content area */
+  .content-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 40px;
+    scroll-behavior: smooth;
+  }
+
+  /* ===== CONTENT PANELS ===== */
+  .content-panel {
+    display: none;
+    animation: fadeIn 200ms ease;
+  }
+
+  .content-panel.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== DESIGN CONTENT STYLING ===== */
+  .design-content h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    line-height: 1.3;
+    letter-spacing: -0.3px;
+  }
+
+  .design-content h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-top: 36px;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    position: relative;
+    padding-left: 20px;
+  }
+
+  .design-content h2::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%) rotate(0deg);
+    width: 0;
+    height: 0;
+    border-left: 6px solid var(--accent);
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    transition: transform var(--transition-fast);
+  }
+
+  .design-content h2.collapsed::before {
+    transform: translateY(-50%) rotate(-90deg);
+  }
+
+  .design-content h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-top: 24px;
+    margin-bottom: 10px;
+  }
+
+  .design-content p {
+    margin-bottom: 14px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+
+  .design-content ul, .design-content ol {
+    margin-bottom: 14px;
+    padding-left: 24px;
+  }
+
+  .design-content li {
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  .design-content li strong { color: var(--text-primary); }
+  .design-content strong { color: var(--text-primary); font-weight: 600; }
+  .design-content em { color: var(--accent-hover); font-style: italic; }
+
+  .design-content code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: var(--bg-tertiary);
+    padding: 2px 7px;
+    border-radius: 4px;
+    color: #c4b5fd;
+    border: 1px solid var(--border);
+  }
+
+  .collapsible-section {
+    overflow: hidden;
+    transition: max-height var(--transition-normal), opacity var(--transition-normal);
+    max-height: 8000px;
+    opacity: 1;
+  }
+
+  .collapsible-section.collapsed {
+    max-height: 0;
+    opacity: 0;
+  }
+
+  /* Code blocks */
+  .code-block {
+    background: #191a2e;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 16px 20px;
+    margin: 16px 0;
+    overflow-x: auto;
+    position: relative;
+  }
+
+  .code-block-header {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .code-block pre {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    color: #c4b5fd;
+    white-space: pre;
+    margin: 0;
+  }
+
+  .code-block .comment { color: var(--text-muted); }
+  .code-block .keyword { color: #c792ea; }
+  .code-block .string { color: #c3e88d; }
+  .code-block .arrow { color: var(--accent); }
+
+  /* Data model table */
+  .schema-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 13px;
+  }
+
+  .schema-table th {
+    text-align: left;
+    padding: 10px 14px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .schema-table td {
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  .schema-table td:first-child {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: #c4b5fd;
+  }
+
+  .schema-table tr:hover td { background: var(--bg-hover); }
+
+  /* Info callout */
+  .callout {
+    background: var(--accent-dim);
+    border: 1px solid rgba(124, 92, 252, 0.3);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 14px 18px;
+    margin: 16px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .callout strong { color: var(--accent); }
+
+  .callout.warning {
+    background: var(--yellow-dim);
+    border-color: rgba(251, 191, 36, 0.3);
+    border-left-color: var(--yellow);
+  }
+
+  .callout.warning strong { color: var(--yellow); }
+
+  .callout.critical {
+    background: var(--red-dim);
+    border-color: rgba(248, 113, 113, 0.3);
+    border-left-color: var(--red);
+  }
+
+  .callout.critical strong { color: var(--red); }
+
+  /* Feedback tab */
+  .feedback-empty, .changes-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+
+  .feedback-empty-icon, .changes-empty-icon {
+    font-size: 40px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+
+  .feedback-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+
+  .feedback-card-header {
+    padding: 14px 18px;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .feedback-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .feedback-avatar.security { background: linear-gradient(135deg, #f87171, #ef4444); }
+  .feedback-avatar.performance { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+  .feedback-avatar.architecture { background: linear-gradient(135deg, var(--accent), #9478ff); }
+  .feedback-avatar.frontend { background: linear-gradient(135deg, #34d399, #10b981); }
+  .feedback-avatar.devex { background: linear-gradient(135deg, #60a5fa, #3b82f6); }
+  .feedback-avatar.data { background: linear-gradient(135deg, #a78bfa, #8b5cf6); }
+  .feedback-avatar.ux { background: linear-gradient(135deg, #f472b6, #ec4899); }
+  .feedback-avatar.ops { background: linear-gradient(135deg, #fb923c, #f97316); }
+
+  .feedback-reviewer {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .feedback-points { padding: 14px 18px; }
+
+  .feedback-point {
+    padding: 8px 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.6;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .feedback-point:last-child { border-bottom: none; }
+
+  .feedback-point-icon {
+    color: var(--yellow);
+    flex-shrink: 0;
+    margin-top: 2px;
+    font-size: 12px;
+  }
+
+  .feedback-point-icon.critical { color: var(--red); }
+  .feedback-point-icon.high { color: var(--yellow); }
+  .feedback-point-icon.medium { color: var(--accent); }
+
+  /* Changes tab */
+  .change-category { margin-bottom: 20px; }
+
+  .change-category-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 10px;
+    padding-left: 4px;
+  }
+
+  .change-item {
+    padding: 8px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  /* Diff tab */
+  .diff-container {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.7;
+    margin-bottom: 20px;
+  }
+
+  .diff-header {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    padding: 10px 16px;
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+
+  .diff-body {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    padding: 12px 0;
+    overflow-x: auto;
+  }
+
+  .diff-line {
+    padding: 1px 16px;
+    white-space: pre;
+  }
+
+  .diff-line.added {
+    background: var(--green-dim);
+    color: var(--green);
+  }
+
+  .diff-line.removed {
+    background: var(--red-dim);
+    color: var(--red);
+  }
+
+  .diff-line.context { color: var(--text-muted); }
+
+  .diff-line.hunk {
+    color: var(--accent);
+    background: var(--accent-dim);
+    padding-top: 6px;
+    padding-bottom: 6px;
+    margin-top: 8px;
+  }
+
+  /* ===== RIGHT PANEL ===== */
+  .right-panel {
+    width: var(--right-panel-width);
+    min-width: var(--right-panel-width);
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width var(--transition-normal), min-width var(--transition-normal), opacity var(--transition-normal);
+  }
+
+  .right-panel.collapsed {
+    width: 0;
+    min-width: 0;
+    opacity: 0;
+    overflow: hidden;
+  }
+
+  .right-panel-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .right-panel-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .right-panel-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color var(--transition-fast);
+  }
+
+  .right-panel-close:hover { color: var(--text-primary); }
+
+  .right-panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  .right-panel-section { margin-bottom: 24px; }
+
+  .right-panel-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 10px;
+  }
+
+  .right-panel-meta {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .right-panel-meta-label { color: var(--text-muted); }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 12px;
+  }
+
+  .status-badge.complete { background: var(--green-dim); color: var(--green); }
+
+  .right-panel-feedback-mini {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .right-panel-feedback-mini strong {
+    color: var(--text-primary);
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .right-panel-change-item {
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    line-height: 1.5;
+  }
+
+  .right-panel-change-item:last-child { border-bottom: none; }
+
+  /* ===== SEARCH HIGHLIGHT ===== */
+  mark {
+    background: var(--accent-glow);
+    color: var(--text-primary);
+    padding: 1px 3px;
+    border-radius: 2px;
+  }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 1200px) {
+    .right-panel { display: none; }
+    .right-panel-toggle { display: none; }
+  }
+
+  @media (max-width: 800px) {
+    .sidebar { width: 200px; min-width: 200px; }
+    .content-area { padding: 20px 24px; }
+  }
+
+  /* ===== ARCHITECTURE DIAGRAM ===== */
+  .arch-diagram {
+    background: #191a2e;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    margin: 16px 0;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .arch-diagram .highlight { color: var(--accent); font-weight: 600; }
+  .arch-diagram .arrow { color: var(--green); }
+  .arch-diagram .component { color: #c4b5fd; }
+  .arch-diagram .protocol { color: var(--yellow); font-size: 11px; }
+
+  /* ===== PHASE LIST ===== */
+  .phase-list { margin: 16px 0; }
+
+  .phase-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 18px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+  }
+
+  .phase-number {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .phase-content { flex: 1; }
+
+  .phase-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+
+  .phase-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  /* ===== MSG PROTOCOL TABLE ===== */
+  .msg-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 13px;
+  }
+
+  .msg-table th {
+    text-align: left;
+    padding: 10px 14px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  .msg-table td {
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  .msg-table td code { font-size: 12px; }
+  .msg-table .direction { text-align: center; font-size: 14px; }
+  .msg-table tr:hover td { background: var(--bg-hover); }
+
+  /* ===== KEYBOARD HELP OVERLAY ===== */
+  .keyboard-help-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 150ms ease;
+  }
+
+  .keyboard-help-overlay.visible { display: flex; }
+
+  .keyboard-help-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    max-width: 480px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+
+  .keyboard-help-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .keyboard-help-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+
+  .keyboard-help-close:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+
+  .keyboard-shortcut-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .keyboard-shortcut-row:last-child { border-bottom: none; }
+
+  .keyboard-key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 26px;
+    padding: 0 8px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-primary);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  .keyboard-shortcut-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  /* ===== HELP BUTTON ===== */
+  .help-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 14px;
+    cursor: pointer;
+    z-index: 100;
+    transition: all var(--transition-fast);
+    font-family: var(--font-sans);
+    font-weight: 600;
+  }
+
+  .help-button:hover {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 12px var(--accent-dim);
+  }
+
+  /* ===== SCROLL TO TOP ===== */
+  .scroll-top-btn {
+    position: fixed;
+    bottom: 64px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    z-index: 100;
+    transition: all var(--transition-fast);
+  }
+
+  .scroll-top-btn.visible { display: flex; }
+
+  .scroll-top-btn:hover {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ===== STATUS LEGEND ===== */
+  .status-legend {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+  }
+
+  .status-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .status-legend-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  .status-legend-dot.complete { background: var(--green); }
+
+  /* ===== BREADCRUMB ===== */
+  .breadcrumb {
+    padding: 10px 24px;
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .breadcrumb-sep { color: var(--border-light); }
+  .breadcrumb-current { color: var(--text-secondary); font-weight: 500; }
+
+  /* ===== VERSION NAV ===== */
+  .version-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-secondary);
+  }
+
+  .version-nav-btn {
+    flex: 1;
+    padding: 8px 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    text-align: center;
+    transition: all var(--transition-fast);
+  }
+
+  .version-nav-btn:hover:not(:disabled) {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .version-nav-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  /* ===== REVIEW SUMMARY CARD ===== */
+  .review-summary {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+
+  .review-summary-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .review-summary-title::before {
+    content: '';
+    width: 4px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  .review-summary-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 12px;
+  }
+
+  .review-stat { text-align: center; }
+
+  .review-stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .review-stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .review-summary-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  /* ===== CHANGES SUMMARY ===== */
+  .changes-summary {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+
+  .changes-summary-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .changes-summary-title::before {
+    content: '';
+    width: 4px;
+    height: 16px;
+    background: var(--green);
+    border-radius: 2px;
+  }
+
+  /* ===== CUMULATIVE LIST ===== */
+  .cumulative-list {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 16px 20px;
+    margin: 16px 0;
+  }
+
+  .cumulative-list h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .cumulative-list ul {
+    margin: 0;
+    padding-left: 20px;
+  }
+
+  .cumulative-list li {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 3px;
+  }
+
+  .cumulative-list li.current {
+    color: var(--green);
+    font-weight: 500;
+  }
+
+  /* ===== PRINT STYLES ===== */
+  @media print {
+    .sidebar, .right-panel, .tab-bar, .help-button, .scroll-top-btn { display: none !important; }
+    .main { margin: 0; }
+    .content-area { padding: 20px; }
+    body { background: white; color: black; }
+    .design-content h1 { color: black; }
+    .design-content h2 { color: #333; border-bottom-color: #ccc; }
+    .design-content p, .design-content li { color: #444; }
+    .code-block { background: #f5f5f5; border-color: #ddd; }
+    .code-block pre { color: #333; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">PM</div>
+        <div>
+          <div class="sidebar-logo-text">Design Iterations</div>
+          <div class="sidebar-logo-sub">CLI Orchestrator</div>
+        </div>
+      </div>
+      <div class="progress-bar-container">
+        <div class="progress-label">
+          <span id="progress-text">Version 1 of 10</span>
+          <span id="progress-percent">100%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-bar-fill" id="progress-fill" style="width: 100%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="search-container">
+      <div class="search-wrapper">
+        <span class="search-icon">&#128269;</span>
+        <input type="text" class="search-input" id="search-input" placeholder="Search all versions..." />
+      </div>
+    </div>
+    <div class="version-list" id="version-list"></div>
+    <div class="status-legend">
+      <div class="status-legend-item"><div class="status-legend-dot complete"></div>Done</div>
+    </div>
+    <div class="version-nav">
+      <button class="version-nav-btn" id="nav-prev" disabled>&larr; Prev</button>
+      <button class="version-nav-btn" id="nav-next">Next &rarr;</button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+    <div class="breadcrumb" id="breadcrumb">
+      <span>Design Iterations</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current" id="breadcrumb-version">V1: Initial Synthesis</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current" id="breadcrumb-tab">Design</span>
+    </div>
+    <div class="tab-bar">
+      <div class="tab active" data-tab="design">Design</div>
+      <div class="tab" data-tab="feedback">Feedback</div>
+      <div class="tab" data-tab="changes">Changes</div>
+      <div class="tab" data-tab="diff">Diff</div>
+      <div class="tab-spacer"></div>
+      <button class="right-panel-toggle" id="right-panel-toggle">Toggle Panel</button>
+    </div>
+    <div class="content-area" id="content-area">
+      <div class="content-panel active" id="panel-design"></div>
+      <div class="content-panel" id="panel-feedback"></div>
+      <div class="content-panel" id="panel-changes"></div>
+      <div class="content-panel" id="panel-diff"></div>
+    </div>
+  </main>
+
+  <!-- RIGHT PANEL -->
+  <aside class="right-panel" id="right-panel">
+    <div class="right-panel-header">
+      <span class="right-panel-title">Version Details</span>
+      <button class="right-panel-close" id="right-panel-close">&times;</button>
+    </div>
+    <div class="right-panel-content" id="right-panel-content"></div>
+  </aside>
+</div>
+
+<!-- KEYBOARD HELP OVERLAY -->
+<div class="keyboard-help-overlay" id="keyboard-help">
+  <div class="keyboard-help-card">
+    <div class="keyboard-help-title">
+      Keyboard Shortcuts
+      <button class="keyboard-help-close" id="keyboard-help-close">&times;</button>
+    </div>
+    <div class="keyboard-shortcut-row">
+      <span class="keyboard-shortcut-desc">Previous version</span>
+      <span class="keyboard-key">&uarr;</span>
+    </div>
+    <div class="keyboard-shortcut-row">
+      <span class="keyboard-shortcut-desc">Next version</span>
+      <span class="keyboard-key">&darr;</span>
+    </div>
+    <div class="keyboard-shortcut-row">
+      <span class="keyboard-shortcut-desc">Design tab</span>
+      <span class="keyboard-key">1</span>
+    </div>
+    <div class="keyboard-shortcut-row">
+      <span class="keyboard-shortcut-desc">Feedback tab</span>
+      <span class="keyboard-key">2</span>
+    </div>
+    <div class="keyboard-shortcut-row">
+      <span class="keyboard-shortcut-desc">Changes tab</span>
+      <span class="keyboard-key">3</span>
+    </div>
+    <div class="keyboard-shortcut-row">
+      <span class="keyboard-shortcut-desc">Diff tab</span>
+      <span class="keyboard-key">4</span>
+    </div>
+    <div class="keyboard-shortcut-row">
+      <span class="keyboard-shortcut-desc">Focus search</span>
+      <span class="keyboard-key">/</span>
+    </div>
+    <div class="keyboard-shortcut-row">
+      <span class="keyboard-shortcut-desc">Clear search / close overlay</span>
+      <span class="keyboard-key">Esc</span>
+    </div>
+    <div class="keyboard-shortcut-row">
+      <span class="keyboard-shortcut-desc">Show this help</span>
+      <span class="keyboard-key">?</span>
+    </div>
+  </div>
+</div>
+
+<!-- HELP BUTTON -->
+<button class="help-button" id="help-button" title="Keyboard shortcuts (?)">?</button>
+
+<!-- SCROLL TO TOP -->
+<button class="scroll-top-btn" id="scroll-top-btn" title="Scroll to top">&uarr;</button>
+
+<script>
+// ============================================================
+// DATA -- All 10 design iteration versions
+// ============================================================
+const versions = [
+  // ================================================================
+  // V1: Initial Synthesis
+  // ================================================================
+  {
+    version: 1,
+    title: "Initial Synthesis -- Three-Expert Brainstorm",
+    date: "2026-04-05",
+    status: "complete",
+    content: `
+      <h1>V1: Initial Synthesis &mdash; Three-Expert Brainstorm</h1>
+      <p>Baseline design synthesized from three domain experts (Systems Architect, CLI Integration Specialist, Frontend UX Expert). Establishes the three-tier architecture, SDK integration strategy, WebSocket protocol, data model, and frontend components.</p>
+
+      <h2 data-section="v1-arch">Architecture Overview</h2>
+      <div class="collapsible-section" data-section-content="v1-arch">
+        <h3>The Core Challenge</h3>
+        <p>PromptManager runs in Docker containers (isolated), but Claude Code CLI needs host machine access (filesystem, git, npm, auth tokens). We cannot run Claude Code meaningfully inside a container.</p>
+
+        <h3>Solution: Host-Native Sidecar + Docker Stack</h3>
+        <div class="arch-diagram"><span class="component">Browser</span> <span class="arrow">&lt;--</span><span class="protocol">WebSocket</span><span class="arrow">--&gt;</span> <span class="component">Backend</span> <span class="highlight">(Docker :8000)</span> <span class="arrow">&lt;--</span><span class="protocol">HTTP/SSE</span><span class="arrow">--&gt;</span> <span class="component">Sidecar</span> <span class="highlight">(Host :9100)</span> <span class="arrow">--&gt;</span> <span class="component">Claude CLI</span> <span class="highlight">(subprocess)</span></div>
+
+        <p>Three-tier architecture:</p>
+        <ul>
+          <li><strong>Frontend</strong> (Docker, React): UI with WebSocket connection to backend</li>
+          <li><strong>Backend</strong> (Docker, FastAPI): REST API + WebSocket relay + database persistence</li>
+          <li><strong>Sidecar</strong> (Host-native, FastAPI): Process manager for Claude CLI subprocesses</li>
+        </ul>
+        <p>The sidecar runs directly on the host machine (not in Docker) to access the host filesystem, Claude CLI binary (<code>~/.local/bin/claude</code>), auth tokens (<code>~/.claude/</code>), and project directories.</p>
+      </div>
+
+      <h2 data-section="v1-cli">CLI Integration Strategy</h2>
+      <div class="collapsible-section" data-section-content="v1-cli">
+        <h3>Decision: <code>claude_code_sdk</code> Python Package</h3>
+        <p>The SDK provides typed message objects (<code>AssistantMessage</code>, <code>ToolUseBlock</code>, etc.), bidirectional streaming, a <code>can_use_tool</code> callback for forwarding permission requests, and <code>ClaudeCodeOptions</code> for configuration (cwd, permission_mode, allowed_tools, model, max_turns).</p>
+        <div class="code-block">
+          <div class="code-block-header">SDK Usage (Python)</div>
+          <pre><span class="keyword">from</span> claude_code_sdk <span class="keyword">import</span> ClaudeCode, ClaudeCodeOptions
+
+<span class="keyword">async def</span> <span class="string">start_session</span>(prompt, cwd):
+    options = ClaudeCodeOptions(cwd=cwd, permission_mode=<span class="string">"bypassPermissions"</span>)
+    <span class="keyword">async with</span> ClaudeCode(options) <span class="keyword">as</span> cc:
+        <span class="keyword">async for</span> msg <span class="keyword">in</span> cc.query(prompt):
+            <span class="keyword">yield</span> msg</pre>
+        </div>
+      </div>
+
+      <h2 data-section="v1-comms">Real-Time Communication</h2>
+      <div class="collapsible-section" data-section-content="v1-comms">
+        <h3>Browser &harr; Backend: WebSocket (Multiplexed)</h3>
+        <p>Single WebSocket connection from browser, multiplexed across sessions via session ID in message envelope.</p>
+        <table class="msg-table">
+          <thead><tr><th>Type</th><th>Dir</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>session.create</code></td><td class="direction">&rarr;</td><td>Start new session with prompt and config</td></tr>
+            <tr><td><code>session.input</code></td><td class="direction">&rarr;</td><td>Send follow-up prompt</td></tr>
+            <tr><td><code>session.approve</code></td><td class="direction">&rarr;</td><td>Approve or deny a tool call</td></tr>
+            <tr><td><code>session.abort</code></td><td class="direction">&rarr;</td><td>Cancel a running session</td></tr>
+            <tr><td><code>session.message</code></td><td class="direction">&larr;</td><td>Streaming text/tool content</td></tr>
+            <tr><td><code>session.approval_required</code></td><td class="direction">&larr;</td><td>Tool call requires permission</td></tr>
+            <tr><td><code>session.completed</code></td><td class="direction">&larr;</td><td>Session finished</td></tr>
+            <tr><td><code>session.error</code></td><td class="direction">&larr;</td><td>Error in session</td></tr>
+          </tbody>
+        </table>
+        <h3>Backend &harr; Sidecar: REST + SSE</h3>
+        <ul>
+          <li><strong>REST POST</strong> to sidecar: create sessions, send messages, approve tools</li>
+          <li><strong>SSE stream</strong> from sidecar: real-time output relay</li>
+          <li>Sidecar binds to <code>127.0.0.1:9100</code> (localhost only)</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v1-data">Data Model</h2>
+      <div class="collapsible-section" data-section-content="v1-data">
+        <h3><code>claude_sessions</code></h3>
+        <table class="schema-table">
+          <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>id</td><td>UUID PK</td><td>Matches CLI session-id</td></tr>
+            <tr><td>group_id</td><td>FK &rarr; prompt_groups</td><td>Associated prompt group</td></tr>
+            <tr><td>template_id</td><td>FK &rarr; prompt_templates</td><td>Source template (nullable)</td></tr>
+            <tr><td>execution_id</td><td>FK &rarr; task_executions</td><td>Source execution (nullable)</td></tr>
+            <tr><td>name</td><td>String</td><td>User-editable session name</td></tr>
+            <tr><td>status</td><td>Enum</td><td>starting/running/waiting_approval/completed/failed/terminated</td></tr>
+            <tr><td>working_directory</td><td>String</td><td>Host filesystem path</td></tr>
+            <tr><td>model</td><td>String</td><td>Claude model identifier</td></tr>
+            <tr><td>initial_prompt</td><td>Text</td><td>Rendered prompt text</td></tr>
+            <tr><td>config</td><td>JSON</td><td>CLI flags, allowed tools, permission mode</td></tr>
+            <tr><td>token_usage</td><td>JSON</td><td>Input/output token counts</td></tr>
+            <tr><td>total_cost_usd</td><td>Float</td><td>Accumulated cost</td></tr>
+          </tbody>
+        </table>
+        <h3><code>session_messages</code></h3>
+        <table class="schema-table">
+          <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>id</td><td>BIGINT PK</td><td>Auto-increment</td></tr>
+            <tr><td>session_id</td><td>FK &rarr; claude_sessions</td><td>Parent session (CASCADE)</td></tr>
+            <tr><td>sequence</td><td>INT</td><td>Ordering within session</td></tr>
+            <tr><td>role</td><td>Enum</td><td>user/assistant/system/tool_use/tool_result</td></tr>
+            <tr><td>content</td><td>TEXT</td><td>Message content</td></tr>
+            <tr><td>metadata</td><td>JSON</td><td>Tool name, file paths, etc.</td></tr>
+            <tr><td>cost_usd</td><td>Float</td><td>Per-message cost (nullable)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 data-section="v1-frontend">Frontend Architecture</h2>
+      <div class="collapsible-section" data-section-content="v1-frontend">
+        <h3>New Route: <code>/sessions</code> (SessionsPage)</h3>
+        <ul>
+          <li>Horizontal tab bar for active sessions</li>
+          <li>Virtual-scrolled message stream (handles 10K+ messages)</li>
+          <li>Inline tool approval cards with approve/deny buttons</li>
+          <li>Session input area for follow-up prompts</li>
+        </ul>
+        <h3>State Management</h3>
+        <ul>
+          <li><code>useReducer</code> + React Context (scoped to sessions)</li>
+          <li>Message batching via <code>requestAnimationFrame</code></li>
+          <li>No external state library (matches project convention)</li>
+        </ul>
+        <h3>Key Components</h3>
+        <ul>
+          <li><strong>SessionTerminal</strong>: Virtual-scrolled message display</li>
+          <li><strong>ToolApprovalCard</strong>: Inline permission request with countdown</li>
+          <li><strong>SessionTabBar</strong>: Horizontal tabs with status dots</li>
+          <li><strong>WebSocketProvider</strong>: App-level connection with reconnection</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v1-security">Security Model</h2>
+      <div class="collapsible-section" data-section-content="v1-security">
+        <ul>
+          <li><strong>Sidecar binds <code>127.0.0.1</code> only</strong> &mdash; no network exposure</li>
+          <li><strong>Shared secret</strong> (Bearer token) between backend and sidecar</li>
+          <li><strong>Working directory allowlist</strong> &mdash; configurable permitted base paths</li>
+          <li><strong>Symlink resolution</strong> to prevent path traversal</li>
+          <li><strong>Max concurrent sessions</strong> (default 5)</li>
+          <li><strong>Max session duration</strong> (default 30 min)</li>
+        </ul>
+        <div class="callout">
+          <strong>Note:</strong> This is the initial security design. V2 will add session-based auth, CORS lockdown, Unix domain sockets, and audit logging.
+        </div>
+      </div>
+
+      <h2 data-section="v1-deploy">Docker &amp; Deployment</h2>
+      <div class="collapsible-section" data-section-content="v1-deploy">
+        <ul>
+          <li><code>ORCHESTRATOR_URL</code> env var added to backend service</li>
+          <li><code>extra_hosts</code> for <code>host.docker.internal</code> (Linux compatibility)</li>
+          <li>Sidecar runs on host: <code>uvicorn</code> on <code>127.0.0.1:9100</code></li>
+          <li>Requires: Python 3.12, <code>claude_code_sdk</code>, Claude CLI installed on host</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v1-phases">Implementation Phases</h2>
+      <div class="collapsible-section" data-section-content="v1-phases">
+        <div class="phase-list">
+          <div class="phase-item"><div class="phase-number">1</div><div class="phase-content"><div class="phase-title">Foundation</div><div class="phase-desc">Sidecar process manager, database migration, backend models, SDK integration</div></div></div>
+          <div class="phase-item"><div class="phase-number">2</div><div class="phase-content"><div class="phase-title">Backend Integration</div><div class="phase-desc">Orchestrator client, REST + WebSocket endpoints, message relay, session lifecycle</div></div></div>
+          <div class="phase-item"><div class="phase-number">3</div><div class="phase-content"><div class="phase-title">Frontend Build</div><div class="phase-desc">WebSocket hook, session terminal, tool approval UI, session management page</div></div></div>
+          <div class="phase-item"><div class="phase-number">4</div><div class="phase-content"><div class="phase-title">Polish &amp; Hardening</div><div class="phase-desc">Timeouts, reconnection, error states, session history, cost tracking, observability</div></div></div>
+        </div>
+      </div>
+    `,
+    feedback: [
+      { reviewer: "Systems Architect", avatarClass: "architecture", points: [
+        "Three-tier architecture (Browser, Docker Backend, Host Sidecar) addresses the container-host boundary correctly.",
+        "Needs deeper analysis of failure modes: sidecar crash recovery, session state consistency, orphaned processes.",
+        "Missing: database connection pool tuning, resource limits on containers, memory budgets."
+      ]},
+      { reviewer: "CLI Integration Specialist", avatarClass: "devex", points: [
+        "SDK choice over raw subprocess is sound -- reduces integration complexity significantly.",
+        "Tool approval callback flow needs timeout handling and default-deny behavior specification.",
+        "Missing: SDK version mismatch handling, CLI binary updates, auth token refresh."
+      ]},
+      { reviewer: "Frontend UX Expert", avatarClass: "frontend", points: [
+        "Virtual scrolling for message stream is essential -- good to see it planned from V1.",
+        "WebSocket reconnection strategy needs explicit design -- silent reconnect vs user notification.",
+        "Session tab management needs thought for 10+ concurrent sessions."
+      ]}
+    ],
+    changes: [
+      { category: "Initial Design", items: [
+        "Created three-tier architecture: Browser, Docker Backend, Host Sidecar",
+        "Selected claude_code_sdk Python package over raw subprocess",
+        "Defined WebSocket protocol for browser-backend communication",
+        "Defined REST + SSE protocol for backend-sidecar communication",
+        "Designed claude_sessions and session_messages database tables",
+        "Outlined frontend component architecture with virtual scrolling",
+        "Established basic security model with localhost binding and bearer tokens",
+        "Defined four implementation phases"
+      ]}
+    ]
+  },
+
+  // ================================================================
+  // V2: Security Hardening
+  // ================================================================
+  {
+    version: 2,
+    title: "Security Hardening",
+    date: "2026-04-05",
+    status: "complete",
+    content: `
+      <h1>V2: Security Hardening</h1>
+      <p>Incorporates Round 1 security review feedback. Adds session-based authentication, CORS lockdown, Unix domain sockets for sidecar communication, prompt injection protection, Docker network isolation, cost controls, and audit logging.</p>
+
+      <h2 data-section="v2-auth">Session-Based Authentication (CRITICAL)</h2>
+      <div class="collapsible-section" data-section-content="v2-auth">
+        <div class="callout critical"><strong>CRITICAL:</strong> V1 had no user authentication on the backend. Anyone with network access could create CLI sessions.</div>
+        <h3>Implementation</h3>
+        <ul>
+          <li><strong>Argon2-hashed shared secret</strong> stored in <code>.env</code>, configured at startup</li>
+          <li><strong>HTTP-only SameSite cookie</strong> (<code>session_token</code>) issued on <code>POST /api/auth/login</code></li>
+          <li><strong>Cookie validation</strong> on every REST and WebSocket request</li>
+          <li><strong>Session expiry</strong>: configurable TTL (default 24h), sliding window renewal</li>
+        </ul>
+        <div class="code-block">
+          <div class="code-block-header">Auth Flow</div>
+          <pre><span class="comment"># Login: POST /api/auth/login</span>
+<span class="comment"># Body: { "secret": "user-configured-password" }</span>
+<span class="comment"># Response: Set-Cookie: session_token=...; HttpOnly; SameSite=Strict</span>
+<span class="comment">#</span>
+<span class="comment"># All subsequent requests: cookie auto-attached by browser</span>
+<span class="comment"># WebSocket: cookie validated during upgrade handshake</span></pre>
+        </div>
+      </div>
+
+      <h2 data-section="v2-cors">CORS Lockdown (CRITICAL)</h2>
+      <div class="collapsible-section" data-section-content="v2-cors">
+        <div class="callout critical"><strong>CRITICAL:</strong> V1 used wildcard CORS (<code>*</code>). Now locked to explicit origin.</div>
+        <ul>
+          <li>CORS origin set to <code>http://localhost:3000</code> (configurable via env)</li>
+          <li><code>credentials: true</code> to allow cookie attachment</li>
+          <li>Explicit allowed methods and headers</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v2-socket">Unix Domain Socket for Sidecar (CRITICAL)</h2>
+      <div class="collapsible-section" data-section-content="v2-socket">
+        <div class="callout critical"><strong>CRITICAL:</strong> V1 used TCP <code>127.0.0.1:9100</code>. Now uses Unix domain socket for stronger isolation.</div>
+        <ul>
+          <li>Socket path: <code>/tmp/promptmanager-sidecar.sock</code> (configurable)</li>
+          <li>File permissions: <code>0600</code> (owner-only access)</li>
+          <li><strong>Ephemeral token</strong>: sidecar generates random token at startup, writes to <code>/tmp/pm-sidecar-token</code> (0600 perms). Backend reads this file on connect.</li>
+          <li>No TCP port exposure at all in default configuration</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v2-perms">Permission Mode Enforcement (CRITICAL)</h2>
+      <div class="collapsible-section" data-section-content="v2-perms">
+        <div class="callout critical"><strong>CRITICAL:</strong> V1 defaulted to <code>bypassPermissions</code>. This is extremely dangerous.</div>
+        <ul>
+          <li>Default permission mode: <code>"default"</code> (requires approval for dangerous tools)</li>
+          <li><strong>Named security profiles</strong>:
+            <ul>
+              <li><code>readonly</code>: Only Read, Glob, Grep, WebSearch allowed</li>
+              <li><code>standard</code>: Default Claude Code permissions (approve dangerous tools)</li>
+              <li><code>unrestricted</code>: Bypass permissions (requires explicit opt-in per session)</li>
+            </ul>
+          </li>
+          <li>Profile stored per-session in <code>config</code> column, audited on change</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v2-injection">Prompt Injection Protection (HIGH)</h2>
+      <div class="collapsible-section" data-section-content="v2-injection">
+        <ul>
+          <li>Structural separation: user-provided content wrapped in <code>&lt;user-data&gt;</code> boundary tags</li>
+          <li>System prompt prefix: instructs Claude to treat <code>&lt;user-data&gt;</code> blocks as untrusted data</li>
+          <li>Variable values from templates always wrapped before sending to CLI</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v2-network">Docker Network Isolation (HIGH)</h2>
+      <div class="collapsible-section" data-section-content="v2-network">
+        <ul>
+          <li><strong>frontend-net</strong>: Frontend + Backend only</li>
+          <li><strong>backend-net</strong>: Backend + Database only</li>
+          <li>Frontend cannot reach Database directly</li>
+          <li>Sidecar accessible only via <code>host.docker.internal</code> from backend container</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v2-cost">Cost Controls (HIGH)</h2>
+      <div class="collapsible-section" data-section-content="v2-cost">
+        <ul>
+          <li><strong>Per-session cap</strong>: $5 default (configurable), session terminated when exceeded</li>
+          <li><strong>Daily cap</strong>: $50 default across all sessions</li>
+          <li><strong>Rate limit</strong>: Max 2 new sessions per minute</li>
+          <li>Cost tracked in real-time from SDK token usage callbacks</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v2-ws-auth">WebSocket Authentication (HIGH)</h2>
+      <div class="collapsible-section" data-section-content="v2-ws-auth">
+        <ul>
+          <li>Cookie validated during WebSocket upgrade handshake</li>
+          <li>Unauthenticated upgrade requests rejected with 401</li>
+          <li><code>ANTHROPIC_API_KEY</code> isolated to sidecar process only, never sent to backend or frontend, redacted from all logs</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v2-audit">Audit Logging (MEDIUM)</h2>
+      <div class="collapsible-section" data-section-content="v2-audit">
+        <ul>
+          <li>All auth events logged: login attempts, session creation, tool approvals</li>
+          <li>Session data encryption at rest (AES-256-GCM for sensitive fields)</li>
+          <li>TOCTOU protection for file path validation (resolve + stat atomically)</li>
+        </ul>
+      </div>
+
+      <div class="cumulative-list">
+        <h4>Cumulative Architecture (V1 + V2)</h4>
+        <ul>
+          <li>V1: Three-tier arch, SDK integration, WS protocol, data model, frontend components</li>
+          <li class="current">V2: Session auth, CORS lockdown, Unix socket, permission profiles, injection protection, network isolation, cost controls, audit logging</li>
+        </ul>
+      </div>
+    `,
+    feedback: [
+      { reviewer: "Security Reviewer", avatarClass: "security", points: [
+        "CRITICAL: Session auth with argon2 + HttpOnly cookie is the right approach. Ensure cookie has Secure flag in production.",
+        "CRITICAL: Unix domain socket eliminates TCP attack surface entirely. Good decision.",
+        "CRITICAL: Permission mode enforcement is essential. The named profiles (readonly/standard/unrestricted) provide clear security tiers.",
+        "HIGH: Prompt injection protection with boundary tags is a reasonable first step. Consider additional sanitization for tool arguments.",
+        "HIGH: Docker network isolation properly segments frontend from database.",
+        "MEDIUM: Audit logging should use structured JSON format for machine parsing."
+      ]},
+      { reviewer: "Systems Architect", avatarClass: "architecture", points: [
+        "Cost controls are well-designed but need enforcement at the sidecar level too, not just backend.",
+        "Ephemeral token rotation should happen on sidecar restart, not just generation.",
+        "Missing: What happens when the sidecar restarts mid-session? Token changes, backend loses connection."
+      ]}
+    ],
+    changes: [
+      { category: "Critical Security", items: [
+        "Added session-based authentication (argon2-hashed secret, HTTP-only SameSite cookie)",
+        "Locked CORS from wildcard to explicit origin",
+        "Replaced TCP sidecar connection with Unix domain socket + ephemeral token",
+        "Changed default permission mode from bypassPermissions to 'default'; added named security profiles"
+      ]},
+      { category: "High Priority", items: [
+        "Added prompt injection protection with <user-data> boundary tags",
+        "Added Docker network isolation (frontend-net, backend-net)",
+        "Added cost controls: per-session cap ($5), daily cap ($50), rate limit (2/min)",
+        "Added WebSocket authentication via cookie validation on handshake",
+        "Isolated ANTHROPIC_API_KEY to sidecar only, redacted from logs"
+      ]},
+      { category: "Medium Priority", items: [
+        "Added audit logging for security events",
+        "Added session data encryption at rest",
+        "Added TOCTOU protection for file path validation"
+      ]}
+    ]
+  },
+
+  // ================================================================
+  // V3: Scalability & Resource Management
+  // ================================================================
+  {
+    version: 3,
+    title: "Scalability & Resource Management",
+    date: "2026-04-05",
+    status: "complete",
+    content: `
+      <h1>V3: Scalability &amp; Resource Management</h1>
+      <p>Incorporates Round 2 feedback. Adds memory budget enforcement, database connection pool tuning, batch message inserts, decoupled DB persistence, multiplexed SSE, process group management, backpressure controls, and Docker resource limits.</p>
+
+      <h2 data-section="v3-memory">Memory Budget Enforcement</h2>
+      <div class="collapsible-section" data-section-content="v3-memory">
+        <ul>
+          <li><strong>psutil monitoring</strong>: sidecar tracks RSS memory of each CLI subprocess</li>
+          <li><strong>Budget</strong>: reject new sessions when total memory exceeds configurable threshold (default 2GB for all CLI processes)</li>
+          <li>Per-session memory tracked and reported to backend via heartbeat</li>
+          <li>Warning emitted at 80% of budget, hard reject at 100%</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v3-db">Database Connection Pool Tuning</h2>
+      <div class="collapsible-section" data-section-content="v3-db">
+        <div class="code-block">
+          <div class="code-block-header">SQLAlchemy Engine Config</div>
+          <pre>engine = create_async_engine(
+    DATABASE_URL,
+    pool_size=<span class="string">10</span>,
+    max_overflow=<span class="string">20</span>,
+    pool_pre_ping=<span class="keyword">True</span>,
+    pool_recycle=<span class="string">3600</span>,  <span class="comment"># Recycle connections after 1h</span>
+)</pre>
+        </div>
+        <ul>
+          <li><code>pool_pre_ping</code>: detect stale connections before use</li>
+          <li><code>pool_recycle=3600</code>: prevent long-lived connection issues</li>
+          <li>Separate pool for orchestrator queries vs. PromptManager CRUD</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v3-batch">Batch Message Inserts</h2>
+      <div class="collapsible-section" data-section-content="v3-batch">
+        <ul>
+          <li><strong>100ms batching window</strong>: messages buffered in-memory, flushed to DB in bulk</li>
+          <li>Reduces INSERT frequency from per-message to ~10/second</li>
+          <li>Uses <code>session.execute(insert(SessionMessage), list_of_dicts)</code> for bulk insert</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v3-decouple">Decoupled DB Persistence</h2>
+      <div class="collapsible-section" data-section-content="v3-decouple">
+        <ul>
+          <li><strong>WebSocket relay first</strong>: messages sent to browser immediately</li>
+          <li><strong>DB write async</strong>: persistence happens in background task, does not block relay</li>
+          <li>If DB write fails, messages are queued and retried (not lost to browser)</li>
+          <li>This ensures UI responsiveness is never gated on database latency</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v3-sse">Multiplexed SSE from Sidecar</h2>
+      <div class="collapsible-section" data-section-content="v3-sse">
+        <ul>
+          <li>V1/V2: one SSE connection per session between backend and sidecar</li>
+          <li><strong>V3</strong>: single multiplexed SSE stream with session IDs in envelope</li>
+          <li>Reduces connection count from N (sessions) to 1</li>
+          <li>Sidecar manages internal routing from CLI subprocesses to shared SSE</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v3-process">Process Group Management</h2>
+      <div class="collapsible-section" data-section-content="v3-process">
+        <ul>
+          <li>Each CLI subprocess started in its own <strong>process group</strong> (<code>os.setpgrp()</code>)</li>
+          <li>Termination sends signal to entire group (kills child processes too)</li>
+          <li>Prevents orphaned processes when sidecar or session terminates</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v3-workdir">Working Directory Locking</h2>
+      <div class="collapsible-section" data-section-content="v3-workdir">
+        <ul>
+          <li>Warn when creating a second session in the same working directory</li>
+          <li>Concurrent sessions in same dir can cause file conflicts</li>
+          <li>UI shows warning, does not hard-block (user may intend parallel work)</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v3-backpressure">Backpressure &amp; Retention</h2>
+      <div class="collapsible-section" data-section-content="v3-backpressure">
+        <ul>
+          <li><strong>WS send buffer limit</strong>: max 1000 queued messages per client, drop non-critical (tool_result) when exceeded</li>
+          <li><strong>Session message retention</strong>: 30 days configurable, with created_at index for efficient cleanup</li>
+          <li><strong>Docker resource limits</strong>: memory and CPU caps on backend and frontend containers</li>
+        </ul>
+        <div class="code-block">
+          <div class="code-block-header">docker-compose.yml resource limits</div>
+          <pre>services:
+  backend:
+    deploy:
+      resources:
+        limits:
+          memory: <span class="string">512M</span>
+          cpus: <span class="string">'1.0'</span>
+  frontend:
+    deploy:
+      resources:
+        limits:
+          memory: <span class="string">256M</span>
+          cpus: <span class="string">'0.5'</span></pre>
+        </div>
+      </div>
+
+      <div class="cumulative-list">
+        <h4>Cumulative Architecture (V1 through V3)</h4>
+        <ul>
+          <li>V1: Three-tier arch, SDK integration, WS protocol, data model, frontend components</li>
+          <li>V2: Session auth, CORS lockdown, Unix socket, permission profiles, cost controls, audit logging</li>
+          <li class="current">V3: Memory budgets, DB pool tuning, batch inserts, decoupled persistence, multiplexed SSE, process groups, backpressure, Docker resource limits</li>
+        </ul>
+      </div>
+    `,
+    feedback: [
+      { reviewer: "Performance Reviewer", avatarClass: "performance", points: [
+        "Memory budget via psutil is appropriate for a single-host deployment. Track RSS not VSZ.",
+        "100ms batch window is a good tradeoff. Consider making it configurable for different workloads.",
+        "Multiplexed SSE is a significant improvement -- O(1) connections instead of O(N).",
+        "Missing: What happens to in-flight batched messages if the backend crashes? Need a WAL or similar."
+      ]},
+      { reviewer: "Systems Architect", avatarClass: "architecture", points: [
+        "Decoupled DB persistence is the right pattern. But need to handle backend restart -- how to recover unsaved messages?",
+        "Process group management is essential. Also need PID file tracking for cleanup on sidecar restart.",
+        "Working directory locking should track which sessions are active in each dir, not just warn once."
+      ]}
+    ],
+    changes: [
+      { category: "Memory & Resources", items: [
+        "Added psutil-based memory budget enforcement for CLI subprocesses",
+        "Added Docker resource limits (memory + CPU) on backend and frontend containers",
+        "Removed --reload flag for production uvicorn, added configurable worker count"
+      ]},
+      { category: "Database", items: [
+        "Tuned SQLAlchemy connection pool: pool_size=10, max_overflow=20, pool_pre_ping=True",
+        "Added 100ms batch INSERT windows for session messages",
+        "Decoupled DB persistence from WebSocket relay (relay first, DB async)"
+      ]},
+      { category: "Communication", items: [
+        "Replaced per-session SSE with multiplexed single-connection SSE from sidecar",
+        "Added WS send buffer limits (1000 messages) with non-critical message dropping"
+      ]},
+      { category: "Process Management", items: [
+        "Added process group management for CLI subprocesses (os.setpgrp)",
+        "Added working directory locking with concurrent session warnings",
+        "Added session message retention policy (30 days configurable) with indexes"
+      ]}
+    ]
+  },
+
+  // ================================================================
+  // V4: Error Handling & Recovery
+  // ================================================================
+  {
+    version: 4,
+    title: "Error Handling & Recovery",
+    date: "2026-04-05",
+    status: "complete",
+    content: `
+      <h1>V4: Error Handling &amp; Recovery</h1>
+      <p>Incorporates Round 3 feedback. Adds sidecar crash detection, stale session reconciliation, orphaned process cleanup, approval timeout handling, circuit breaker pattern, graceful degradation, and a three-phase shutdown sequence.</p>
+
+      <h2 data-section="v4-crash">Sidecar Crash Detection</h2>
+      <div class="collapsible-section" data-section-content="v4-crash">
+        <ul>
+          <li><strong>Health heartbeat</strong>: backend pings sidecar every 5 seconds</li>
+          <li><strong>boot_id</strong>: sidecar generates random UUID on startup; backend detects restart when boot_id changes</li>
+          <li>3 consecutive missed heartbeats = sidecar considered down</li>
+          <li>UI notified: "Sidecar connection lost" with auto-reconnect attempt</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v4-reconcile">Stale Session Reconciliation</h2>
+      <div class="collapsible-section" data-section-content="v4-reconcile">
+        <ul>
+          <li>On sidecar restart: backend queries all non-terminal sessions from DB</li>
+          <li>Sends reconciliation request to sidecar with session IDs</li>
+          <li>Sessions not recognized by sidecar marked as <code>'disconnected'</code></li>
+          <li>Users can attempt <strong>resume</strong> (if CLI supports session resume) or manually terminate</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v4-orphan">Orphaned Process Cleanup</h2>
+      <div class="collapsible-section" data-section-content="v4-orphan">
+        <ul>
+          <li><strong>PID file tracking</strong>: each CLI subprocess PID written to <code>/tmp/pm-cli-{session_id}.pid</code></li>
+          <li><strong>Startup cleanup</strong>: on sidecar start, scan PID files, check if processes still running, kill orphans</li>
+          <li><strong>Process group kill</strong>: <code>os.killpg(pgid, signal.SIGTERM)</code> for clean termination</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v4-approval">Approval Timeout Handling</h2>
+      <div class="collapsible-section" data-section-content="v4-approval">
+        <ul>
+          <li><strong>Explicit timeout</strong>: <code>asyncio.wait_for(approval_event.wait(), timeout=300)</code> (5 minutes)</li>
+          <li>On timeout: <strong>auto-deny</strong> the tool call, log the timeout, clean up the asyncio.Event</li>
+          <li>Session transitions to <code>'approval_timeout'</code> state (new), then back to <code>'running'</code></li>
+          <li>Configurable per security profile: readonly=60s, standard=300s, unrestricted=N/A</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v4-stuck">Session Stuck-State Timeouts</h2>
+      <div class="collapsible-section" data-section-content="v4-stuck">
+        <ul>
+          <li><code>'starting'</code> state: 30s timeout, then fail with "session failed to start"</li>
+          <li><code>'waiting_approval'</code> state: configurable (see approval timeout above)</li>
+          <li>Periodic sweep (every 60s): check for sessions stuck in non-terminal states</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v4-circuit">Circuit Breaker for Sidecar Communication</h2>
+      <div class="collapsible-section" data-section-content="v4-circuit">
+        <ul>
+          <li><strong>Closed</strong>: normal operation, requests pass through</li>
+          <li><strong>Open</strong>: after 5 consecutive failures, all requests fast-fail for 30s</li>
+          <li><strong>Half-open</strong>: after cooldown, allow 1 probe request; success resets to closed</li>
+          <li>Prevents thundering herd when sidecar is down</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v4-graceful">Graceful Degradation</h2>
+      <div class="collapsible-section" data-section-content="v4-graceful">
+        <ul>
+          <li>Existing PromptManager features (groups, templates, variables, history) work <strong>without sidecar</strong></li>
+          <li>"Send to Claude" button grayed out when sidecar unavailable</li>
+          <li>Session history still viewable from database even when sidecar is down</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v4-state">Extended State Machine</h2>
+      <div class="collapsible-section" data-section-content="v4-state">
+        <p>New states added: <code>'disconnected'</code>, <code>'resuming'</code>, <code>'approval_timeout'</code></p>
+        <div class="arch-diagram">starting <span class="arrow">&rarr;</span> running <span class="arrow">&harr;</span> waiting_approval
+   <span class="arrow">&darr;</span>          <span class="arrow">&darr;</span>          <span class="arrow">&darr;</span>
+completed   failed    approval_timeout
+   <span class="arrow">&uarr;</span>          <span class="arrow">&uarr;</span>          <span class="arrow">&darr;</span>
+resuming <span class="arrow">&larr;</span> disconnected <span class="arrow">&larr;</span> terminated</div>
+      </div>
+
+      <h2 data-section="v4-shutdown">Three-Phase Shutdown</h2>
+      <div class="collapsible-section" data-section-content="v4-shutdown">
+        <div class="phase-list">
+          <div class="phase-item"><div class="phase-number">1</div><div class="phase-content"><div class="phase-title">Interrupt (5s)</div><div class="phase-desc">Send interrupt signal to CLI, allow graceful completion of current operation</div></div></div>
+          <div class="phase-item"><div class="phase-number">2</div><div class="phase-content"><div class="phase-title">Disconnect (10s)</div><div class="phase-desc">Close SSE/WS connections, flush pending DB writes, save session state</div></div></div>
+          <div class="phase-item"><div class="phase-number">3</div><div class="phase-content"><div class="phase-title">SIGKILL (15s)</div><div class="phase-desc">Force-kill any remaining CLI processes, mark sessions as terminated in DB</div></div></div>
+        </div>
+      </div>
+
+      <h2 data-section="v4-misc">Additional Improvements</h2>
+      <div class="collapsible-section" data-section-content="v4-misc">
+        <ul>
+          <li><strong>Per-session asyncio.Lock</strong>: prevents race conditions on concurrent approve/deny/input</li>
+          <li><strong>Resource cleanup registry</strong>: centralized tracking of tasks, connections, events for cleanup</li>
+          <li><strong>Idempotency tokens</strong>: sidecar requests include unique token to prevent duplicate execution</li>
+          <li><strong>Message deduplication</strong>: <code>(session_id, sequence)</code> unique constraint on session_messages</li>
+          <li><strong>DB connection loss handling</strong>: async write queue with retry/backoff, fire-and-forget for relay</li>
+        </ul>
+      </div>
+
+      <div class="cumulative-list">
+        <h4>Cumulative Architecture (V1 through V4)</h4>
+        <ul>
+          <li>V1: Three-tier arch, SDK integration, WS protocol, data model, frontend components</li>
+          <li>V2: Session auth, CORS, Unix socket, permission profiles, cost controls, audit</li>
+          <li>V3: Memory budgets, DB pool, batch inserts, multiplexed SSE, process groups, backpressure</li>
+          <li class="current">V4: Crash detection, session reconciliation, orphan cleanup, approval timeouts, circuit breaker, graceful degradation, three-phase shutdown, idempotency</li>
+        </ul>
+      </div>
+    `,
+    feedback: [
+      { reviewer: "Systems Architect", avatarClass: "architecture", points: [
+        "Circuit breaker pattern is well-designed. The closed/open/half-open states with configurable thresholds are appropriate.",
+        "Three-phase shutdown is thorough. 5s/10s/15s timing allows graceful wind-down.",
+        "Stale session reconciliation handles the sidecar restart scenario properly.",
+        "Missing: what if the backend itself crashes? Need lifespan handler recovery logic."
+      ]},
+      { reviewer: "Data Model Reviewer", avatarClass: "data", points: [
+        "Message deduplication via (session_id, sequence) unique constraint is the right approach.",
+        "Idempotency tokens add complexity -- ensure they expire after reasonable TTL.",
+        "The extended state machine should be documented as a PostgreSQL ENUM type."
+      ]}
+    ],
+    changes: [
+      { category: "Crash Recovery", items: [
+        "Added sidecar health heartbeat (5s interval) with boot_id restart detection",
+        "Added stale session reconciliation on sidecar restart (mark as 'disconnected')",
+        "Added orphaned process cleanup with PID file tracking + startup scan",
+        "Added backend restart recovery: lifespan handler queries non-terminal sessions"
+      ]},
+      { category: "Timeout & State Management", items: [
+        "Added explicit approval timeout (5 min) with auto-deny on expiry",
+        "Added session stuck-state timeouts (30s for 'starting', configurable for approval)",
+        "Extended state machine with 'disconnected', 'resuming', 'approval_timeout' states"
+      ]},
+      { category: "Resilience Patterns", items: [
+        "Added circuit breaker for sidecar communication (closed/open/half-open)",
+        "Added graceful degradation: PromptManager works without sidecar",
+        "Added per-session asyncio.Lock to prevent race conditions",
+        "Added resource cleanup registry for centralized task/connection cleanup",
+        "Added idempotency tokens and message deduplication",
+        "Added three-phase shutdown: interrupt(5s), disconnect(10s), SIGKILL(15s)"
+      ]}
+    ]
+  },
+
+  // ================================================================
+  // V5: Data Model Optimization
+  // ================================================================
+  {
+    version: 5,
+    title: "Data Model Optimization",
+    date: "2026-04-05",
+    status: "complete",
+    content: `
+      <h1>V5: Data Model Optimization</h1>
+      <p>Incorporates Round 4 feedback. Refines column types (Numeric for money, JSONB over JSON), adds structured token columns, PostgreSQL ENUMs, comprehensive indexing, FK cascade policies, soft delete, monthly partitioning for messages, and a three-phase migration strategy.</p>
+
+      <h2 data-section="v5-types">Column Type Refinements</h2>
+      <div class="collapsible-section" data-section-content="v5-types">
+        <ul>
+          <li><strong>UUID PK</strong> kept for <code>claude_sessions</code> (matches CLI session ID format), but <strong>Integer FKs</strong> maintained for references to existing tables (prompt_groups, prompt_templates, task_executions)</li>
+          <li><strong>Numeric(10,6)</strong> for all monetary columns (<code>total_cost_usd</code>, <code>cost_usd</code>) &mdash; never Float for money</li>
+          <li><strong>JSONB</strong> everywhere (not JSON) &mdash; 4x faster reads, GIN-indexable, supports containment operators</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v5-tokens">Structured Token Columns</h2>
+      <div class="collapsible-section" data-section-content="v5-tokens">
+        <p>Promoted <code>token_usage</code> from a single JSON blob to structured columns for queryability:</p>
+        <table class="schema-table">
+          <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>token_count_input</td><td>Integer</td><td>Total input tokens consumed</td></tr>
+            <tr><td>token_count_output</td><td>Integer</td><td>Total output tokens generated</td></tr>
+            <tr><td>token_count_cache_read</td><td>Integer</td><td>Tokens served from cache</td></tr>
+            <tr><td>token_count_cache_create</td><td>Integer</td><td>Tokens added to cache</td></tr>
+          </tbody>
+        </table>
+        <p>Enables efficient queries: "total tokens consumed today", "sessions by token count", etc.</p>
+      </div>
+
+      <h2 data-section="v5-enums">PostgreSQL Native ENUMs</h2>
+      <div class="collapsible-section" data-section-content="v5-enums">
+        <div class="code-block">
+          <div class="code-block-header">ENUM Definitions</div>
+          <pre><span class="keyword">CREATE TYPE</span> session_status <span class="keyword">AS ENUM</span> (
+    <span class="string">'starting'</span>, <span class="string">'running'</span>, <span class="string">'waiting_approval'</span>,
+    <span class="string">'completed'</span>, <span class="string">'failed'</span>, <span class="string">'terminated'</span>,
+    <span class="string">'disconnected'</span>, <span class="string">'resuming'</span>, <span class="string">'approval_timeout'</span>
+);
+
+<span class="keyword">CREATE TYPE</span> message_role <span class="keyword">AS ENUM</span> (
+    <span class="string">'user'</span>, <span class="string">'assistant'</span>, <span class="string">'system'</span>,
+    <span class="string">'tool_use'</span>, <span class="string">'tool_result'</span>
+);
+
+<span class="keyword">CREATE TYPE</span> approval_resolution <span class="keyword">AS ENUM</span> (
+    <span class="string">'approved'</span>, <span class="string">'denied'</span>, <span class="string">'timeout'</span>
+);</pre>
+        </div>
+      </div>
+
+      <h2 data-section="v5-indexes">Comprehensive Indexing (6 New Indexes)</h2>
+      <div class="collapsible-section" data-section-content="v5-indexes">
+        <table class="schema-table">
+          <thead><tr><th>Index</th><th>Type</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>ix_sessions_active</td><td>Partial (status NOT IN terminal)</td><td>Fast active session lookups</td></tr>
+            <tr><td>ix_sessions_pending_approval</td><td>Partial (status = 'waiting_approval')</td><td>Approval queue queries</td></tr>
+            <tr><td>ix_sessions_group_status</td><td>Composite (group_id, status)</td><td>Group page session listings</td></tr>
+            <tr><td>ix_messages_session_seq</td><td>Composite (session_id, sequence)</td><td>Message ordering (unique)</td></tr>
+            <tr><td>ix_messages_created</td><td>B-tree (created_at)</td><td>Retention policy cleanup</td></tr>
+            <tr><td>ix_sessions_deleted</td><td>Partial (deleted_at IS NULL)</td><td>Soft delete filtering</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 data-section="v5-cascade">FK Cascade Policy</h2>
+      <div class="collapsible-section" data-section-content="v5-cascade">
+        <ul>
+          <li><strong>SET NULL</strong> for parent references: group_id, template_id, execution_id &mdash; deleting a group does not delete sessions</li>
+          <li><strong>CASCADE</strong> for children: deleting a session cascades to session_messages</li>
+          <li>Backref relationships added for ORM navigation: <code>group.sessions</code>, <code>template.sessions</code></li>
+        </ul>
+      </div>
+
+      <h2 data-section="v5-soft">Soft Delete</h2>
+      <div class="collapsible-section" data-section-content="v5-soft">
+        <ul>
+          <li><code>deleted_at</code> column on claude_sessions (nullable DateTime)</li>
+          <li>All queries filter <code>WHERE deleted_at IS NULL</code> by default</li>
+          <li>Admin can purge soft-deleted sessions after retention period</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v5-partition">Monthly Partitioning for Messages</h2>
+      <div class="collapsible-section" data-section-content="v5-partition">
+        <ul>
+          <li>Partition <code>session_messages</code> by monthly range on <code>created_at</code></li>
+          <li>Retention drop becomes instant: <code>DROP TABLE session_messages_2026_01</code></li>
+          <li>Queries with date ranges automatically prune irrelevant partitions</li>
+        </ul>
+        <div class="code-block">
+          <div class="code-block-header">Partition Setup</div>
+          <pre><span class="keyword">CREATE TABLE</span> session_messages (
+    ...
+) <span class="keyword">PARTITION BY RANGE</span> (created_at);
+
+<span class="keyword">CREATE TABLE</span> session_messages_2026_04
+    <span class="keyword">PARTITION OF</span> session_messages
+    <span class="keyword">FOR VALUES FROM</span> (<span class="string">'2026-04-01'</span>) <span class="keyword">TO</span> (<span class="string">'2026-05-01'</span>);</pre>
+        </div>
+      </div>
+
+      <h2 data-section="v5-migration">Three-Phase Migration Strategy</h2>
+      <div class="collapsible-section" data-section-content="v5-migration">
+        <div class="phase-list">
+          <div class="phase-item"><div class="phase-number">1</div><div class="phase-content"><div class="phase-title">Create Tables &amp; Types</div><div class="phase-desc">ENUM types, tables, partitions. No locks on existing tables.</div></div></div>
+          <div class="phase-item"><div class="phase-number">2</div><div class="phase-content"><div class="phase-title">Create Indexes CONCURRENTLY</div><div class="phase-desc">All indexes created with CONCURRENTLY to avoid blocking reads/writes.</div></div></div>
+          <div class="phase-item"><div class="phase-number">3</div><div class="phase-content"><div class="phase-title">Validate FKs with NOT VALID</div><div class="phase-desc">Foreign keys added as NOT VALID first, then validated separately to minimize lock duration.</div></div></div>
+        </div>
+      </div>
+
+      <div class="cumulative-list">
+        <h4>Cumulative Architecture (V1 through V5)</h4>
+        <ul>
+          <li>V1: Three-tier arch, SDK integration, WS protocol, data model, frontend components</li>
+          <li>V2: Session auth, CORS, Unix socket, permission profiles, cost controls</li>
+          <li>V3: Memory budgets, DB pool, batch inserts, multiplexed SSE, process groups</li>
+          <li>V4: Crash detection, reconciliation, orphan cleanup, circuit breaker, three-phase shutdown</li>
+          <li class="current">V5: Numeric money, JSONB, structured tokens, PG ENUMs, 6 indexes, FK cascades, soft delete, monthly partitioning, three-phase migration</li>
+        </ul>
+      </div>
+    `,
+    feedback: [
+      { reviewer: "Data Model Reviewer", avatarClass: "data", points: [
+        "Numeric(10,6) for money is correct. Never use Float for financial data.",
+        "JSONB over JSON is a clear win -- enables GIN indexes and containment queries.",
+        "Monthly partitioning is appropriate for message volume. Ensure partition creation is automated.",
+        "Three-phase migration strategy (tables, CONCURRENTLY indexes, NOT VALID FK) is production-safe.",
+        "Consider adding a session-execution M:N relationship table for cases where one session produces multiple executions."
+      ]},
+      { reviewer: "Systems Architect", avatarClass: "architecture", points: [
+        "Structured token columns are much better than querying inside JSON blobs.",
+        "Soft delete is good for audit trails but ensure the UI makes 'permanently delete' accessible to admins.",
+        "The engine config (pool_size=10, max_overflow=20) should be documented as tunable via environment variables."
+      ]}
+    ],
+    changes: [
+      { category: "Column Types", items: [
+        "Changed monetary columns from Float to Numeric(10,6)",
+        "Changed all JSON columns to JSONB (4x faster reads, indexable)",
+        "Promoted token_usage from JSON blob to structured columns (input, output, cache_read, cache_create)",
+        "Added PostgreSQL native ENUM types for status, role, and resolution"
+      ]},
+      { category: "Indexing & Performance", items: [
+        "Added 6 indexes: active sessions, pending approvals, group+status, message ordering, retention, soft delete",
+        "Added monthly range partitioning on session_messages by created_at"
+      ]},
+      { category: "Data Integrity", items: [
+        "Set FK cascade policy: SET NULL for parent refs, CASCADE for children",
+        "Added soft delete (deleted_at column) on claude_sessions",
+        "Added backref relationships for ORM navigation",
+        "Defined three-phase migration strategy: tables, CONCURRENTLY indexes, NOT VALID FK validation"
+      ]}
+    ]
+  },
+
+  // ================================================================
+  // V6: WebSocket Protocol Robustness
+  // ================================================================
+  {
+    version: 6,
+    title: "WebSocket Protocol Robustness",
+    date: "2026-04-05",
+    status: "complete",
+    content: `
+      <h1>V6: WebSocket Protocol Robustness</h1>
+      <p>Incorporates Round 5 feedback. Adds protocol handshake with capability negotiation, atomic reconnection, ACK-based backpressure, priority lanes, structured error codes, dual heartbeat, message size limits, compression, and protocol versioning.</p>
+
+      <h2 data-section="v6-handshake">Protocol Handshake</h2>
+      <div class="collapsible-section" data-section-content="v6-handshake">
+        <h3>New Message Types</h3>
+        <table class="msg-table">
+          <thead><tr><th>Type</th><th>Dir</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>protocol.hello</code></td><td class="direction">&rarr;</td><td>Client sends supported protocol version + capabilities</td></tr>
+            <tr><td><code>protocol.welcome</code></td><td class="direction">&larr;</td><td>Server responds with negotiated version + server capabilities</td></tr>
+            <tr><td><code>protocol.ack</code></td><td class="direction">&rarr;</td><td>Client acknowledges received messages (for backpressure)</td></tr>
+            <tr><td><code>session.resume</code></td><td class="direction">&rarr;</td><td>Client requests reconnection to existing session</td></tr>
+            <tr><td><code>session.sync</code></td><td class="direction">&larr;</td><td>Server sends missed messages since last ACK</td></tr>
+            <tr><td><code>session.flowctl</code></td><td class="direction">&larr;</td><td>Server flow control (pause/resume sending)</td></tr>
+            <tr><td><code>protocol.error</code></td><td class="direction">&larr;</td><td>Structured error with code + category</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 data-section="v6-reconnect">Atomic Reconnection Protocol</h2>
+      <div class="collapsible-section" data-section-content="v6-reconnect">
+        <p>No REST endpoint needed for sync -- everything happens over WebSocket:</p>
+        <ol>
+          <li>Client reconnects WebSocket, sends <code>protocol.hello</code> with last known sequence per session</li>
+          <li>Server validates auth cookie, sends <code>protocol.welcome</code></li>
+          <li>Client sends <code>session.resume</code> for each active session with <code>lastSequence</code></li>
+          <li>Server sends <code>session.sync</code> with all messages since <code>lastSequence</code></li>
+          <li>Once sync complete, live messages flow normally</li>
+        </ol>
+      </div>
+
+      <h2 data-section="v6-ack">ACK-Based Backpressure</h2>
+      <div class="collapsible-section" data-section-content="v6-ack">
+        <ul>
+          <li>Client sends <code>protocol.ack</code> with highest processed sequence number per session</li>
+          <li><strong>High-water mark</strong>: 200 unACKed messages triggers server-side flow control</li>
+          <li>Server sends <code>session.flowctl</code> with <code>action: "pause"</code>, buffers messages</li>
+          <li>When client catches up (ACKs received), server sends <code>action: "resume"</code></li>
+          <li><strong>Round-robin scheduling</strong> across sessions to prevent one session starving others</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v6-priority">Priority Lanes</h2>
+      <div class="collapsible-section" data-section-content="v6-priority">
+        <table class="schema-table">
+          <thead><tr><th>Priority</th><th>Message Types</th><th>Behavior</th></tr></thead>
+          <tbody>
+            <tr><td>HIGH</td><td>approval_required, error, completed</td><td>Never dropped, sent first</td></tr>
+            <tr><td>NORMAL</td><td>text content, session state changes</td><td>Standard queue order</td></tr>
+            <tr><td>LOW</td><td>tool_result details, token usage updates</td><td>Droppable under pressure</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 data-section="v6-errors">Structured Error Codes</h2>
+      <div class="collapsible-section" data-section-content="v6-errors">
+        <div class="code-block">
+          <div class="code-block-header">Error Code Categories</div>
+          <pre><span class="comment">// Sidecar errors (1xxx)</span>
+SIDECAR_UNAVAILABLE     = <span class="string">1001</span>
+SIDECAR_TIMEOUT         = <span class="string">1002</span>
+CLI_PROCESS_CRASHED     = <span class="string">1003</span>
+CLI_NOT_INSTALLED       = <span class="string">1004</span>
+
+<span class="comment">// API/Cost errors (2xxx)</span>
+API_RATE_LIMITED         = <span class="string">2001</span>
+API_AUTH_FAILED          = <span class="string">2002</span>
+BUDGET_EXCEEDED          = <span class="string">2003</span>
+SESSION_LIMIT_REACHED    = <span class="string">2004</span>
+
+<span class="comment">// Protocol errors (3xxx)</span>
+INVALID_MESSAGE          = <span class="string">3001</span>
+SESSION_NOT_FOUND        = <span class="string">3002</span>
+PERMISSION_DENIED        = <span class="string">3003</span></pre>
+        </div>
+      </div>
+
+      <h2 data-section="v6-heartbeat">Dual Heartbeat</h2>
+      <div class="collapsible-section" data-section-content="v6-heartbeat">
+        <ul>
+          <li><strong>WS protocol ping/pong</strong> (30s interval): low-level connection liveness check</li>
+          <li><strong>Application-level ping</strong> (15s interval): carries metadata (active sessions, queue depth)</li>
+          <li>If 2 consecutive app pings missed, connection marked unhealthy, reconnect triggered</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v6-size">Message Size &amp; Compression</h2>
+      <div class="collapsible-section" data-section-content="v6-size">
+        <ul>
+          <li><strong>Max WS message size</strong>: 1MB. Content exceeding limit is truncated with a REST reference URL</li>
+          <li><strong>permessage-deflate</strong> compression enabled on WebSocket</li>
+          <li>WS auth via query parameter token during upgrade, with token refresh for long sessions</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v6-version">Protocol Versioning</h2>
+      <div class="collapsible-section" data-section-content="v6-version">
+        <ul>
+          <li>WebSocket subprotocol: <code>"orchestrator-v1"</code></li>
+          <li>Capability negotiation in hello/welcome handshake</li>
+          <li>Consolidated envelope format with <code>protocolVersion</code>, <code>timestamp</code>, <code>sessionId</code>, <code>sequence</code>, <code>requestId</code></li>
+        </ul>
+        <div class="code-block">
+          <div class="code-block-header">Message Envelope</div>
+          <pre>{
+  <span class="string">"protocolVersion"</span>: <span class="string">"1"</span>,
+  <span class="string">"type"</span>: <span class="string">"session.message"</span>,
+  <span class="string">"sessionId"</span>: <span class="string">"uuid-here"</span>,
+  <span class="string">"sequence"</span>: <span class="string">42</span>,
+  <span class="string">"timestamp"</span>: <span class="string">"2026-04-05T12:00:00Z"</span>,
+  <span class="string">"requestId"</span>: <span class="string">"req-uuid"</span>,
+  <span class="string">"payload"</span>: { ... }
+}</pre>
+        </div>
+      </div>
+
+      <div class="cumulative-list">
+        <h4>Cumulative Architecture (V1 through V6)</h4>
+        <ul>
+          <li>V1: Three-tier arch, SDK, data model, frontend</li>
+          <li>V2: Auth, CORS, Unix socket, permissions, cost controls</li>
+          <li>V3: Memory budgets, DB pool, batch inserts, multiplexed SSE</li>
+          <li>V4: Crash detection, reconciliation, circuit breaker, shutdown</li>
+          <li>V5: Numeric money, JSONB, ENUMs, indexes, partitioning, migration</li>
+          <li class="current">V6: Protocol handshake, atomic reconnect, ACK backpressure, priority lanes, error codes, dual heartbeat, compression, versioning</li>
+        </ul>
+      </div>
+    `,
+    feedback: [
+      { reviewer: "Systems Architect", avatarClass: "architecture", points: [
+        "Atomic reconnection protocol eliminates the need for REST-based sync. Clean design.",
+        "ACK-based backpressure with high-water mark at 200 is reasonable for typical session output rates.",
+        "Round-robin scheduling prevents session starvation -- important for multi-session users.",
+        "Priority lanes ensure approvals are never dropped even under extreme load."
+      ]},
+      { reviewer: "Frontend UX Expert", avatarClass: "frontend", points: [
+        "Protocol versioning via subprotocol negotiation enables future protocol evolution.",
+        "Message size limit at 1MB with REST fallback is practical for large tool results.",
+        "Dual heartbeat provides defense-in-depth for connection health detection.",
+        "The reconnection flow should be invisible to the user -- no UI flicker during sync."
+      ]}
+    ],
+    changes: [
+      { category: "Protocol Messages", items: [
+        "Added protocol.hello/welcome for capability negotiation",
+        "Added protocol.ack for client acknowledgement of received messages",
+        "Added session.resume and session.sync for reconnection",
+        "Added session.flowctl for server-side flow control",
+        "Added protocol.error with structured error codes"
+      ]},
+      { category: "Backpressure & Scheduling", items: [
+        "Implemented ACK-based backpressure with high-water mark at 200 unACKed messages",
+        "Added round-robin send scheduling across sessions",
+        "Added priority lanes: HIGH (approvals/errors), NORMAL (text), LOW (tool results)"
+      ]},
+      { category: "Connection Robustness", items: [
+        "Implemented atomic reconnection protocol (no REST sync needed)",
+        "Added dual heartbeat: WS ping/pong (30s) + application ping (15s)",
+        "Added max WS message size (1MB) with truncation and REST reference",
+        "Enabled permessage-deflate compression",
+        "Added protocol versioning via WebSocket subprotocol (orchestrator-v1)",
+        "Consolidated message envelope format with protocolVersion, timestamp, sequence, requestId"
+      ]}
+    ]
+  },
+
+  // ================================================================
+  // V7: Frontend Performance & Memory
+  // ================================================================
+  {
+    version: 7,
+    title: "Frontend Performance & Memory",
+    date: "2026-04-05",
+    status: "complete",
+    content: `
+      <h1>V7: Frontend Performance &amp; Memory</h1>
+      <p>Incorporates Round 6 feedback. Replaces Context with useSyncExternalStore, stores messages outside React state, adds virtual scroll with ResizeObserver, WeakMap markdown cache, rAF batching, streaming text optimization, collapsed tool blocks, memory budget, and two-phase search.</p>
+
+      <h2 data-section="v7-state">State Management Overhaul</h2>
+      <div class="collapsible-section" data-section-content="v7-state">
+        <h3>Replace Context with <code>useSyncExternalStore</code></h3>
+        <ul>
+          <li>V1-V6 used <code>useReducer</code> + React Context, causing unnecessary re-renders across all session consumers when any session updated</li>
+          <li><strong>New approach</strong>: <code>useSyncExternalStore</code> with selector pattern</li>
+          <li>Components subscribe to specific slices of state (e.g., "messages for session X")</li>
+          <li>Eliminates ~90% of unnecessary re-renders</li>
+        </ul>
+        <h3>Messages Outside React State</h3>
+        <ul>
+          <li>Store messages in <code>Map&lt;sessionId, Message[]&gt;</code> outside React state tree</li>
+          <li>Use a <strong>version counter</strong> (integer) in React state to trigger re-renders</li>
+          <li>Incrementing counter signals "messages changed" without React diffing the entire array</li>
+        </ul>
+        <div class="code-block">
+          <div class="code-block-header">External Store Pattern</div>
+          <pre><span class="keyword">const</span> messageStore = {
+  messages: <span class="keyword">new</span> Map(),
+  version: <span class="string">0</span>,
+  listeners: <span class="keyword">new</span> Set(),
+
+  addMessage(sessionId, msg) {
+    <span class="keyword">const</span> arr = <span class="keyword">this</span>.messages.get(sessionId) || [];
+    arr.push(msg);
+    <span class="keyword">this</span>.messages.set(sessionId, arr);
+    <span class="keyword">this</span>.version++;
+    <span class="keyword">this</span>.listeners.forEach(fn => fn());
+  },
+
+  subscribe(listener) {
+    <span class="keyword">this</span>.listeners.add(listener);
+    <span class="keyword">return</span> () => <span class="keyword">this</span>.listeners.delete(listener);
+  }
+};</pre>
+        </div>
+      </div>
+
+      <h2 data-section="v7-virtual">Virtual Scroll Implementation</h2>
+      <div class="collapsible-section" data-section-content="v7-virtual">
+        <ul>
+          <li><strong>Position-absolute layout</strong> with <code>heightMap</code> tracking actual rendered height of each message</li>
+          <li><strong>ResizeObserver</strong> on each visible message to update heightMap when content changes (e.g., collapsing code blocks)</li>
+          <li><strong>Manual scroll anchoring</strong>: when new messages arrive, maintain scroll position relative to visible content</li>
+          <li><strong>Overscan</strong>: render 5 messages above and below viewport for smooth scrolling</li>
+          <li><code>React.memo</code> on <code>MessageBubble</code> with stable callback references (useCallback with deps)</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v7-markdown">Markdown Rendering Optimization</h2>
+      <div class="collapsible-section" data-section-content="v7-markdown">
+        <ul>
+          <li><strong>WeakMap-based parse cache</strong>: parsed markdown keyed by message object reference, auto-GCs when messages are evicted</li>
+          <li><strong>Streaming text</strong>: debounced markdown parsing (200ms pause triggers full parse), raw text shown during active streaming</li>
+          <li><strong>Lightweight parser</strong>: no remark/rehype pipeline. Custom parser handles: headers, bold/italic, code blocks, inline code, links, lists, blockquotes</li>
+          <li><strong>Code highlighting</strong>: highlight.js with lazy-loaded language grammars (only load JS, Python, etc. when first encountered)</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v7-batching">rAF Batching</h2>
+      <div class="collapsible-section" data-section-content="v7-batching">
+        <ul>
+          <li>All incoming WebSocket messages batched via <code>requestAnimationFrame</code></li>
+          <li><code>document.hidden</code> fallback: when tab is hidden, batch to 500-message buffer cap, flush on visibility change</li>
+          <li>Prevents browser jank from rapid-fire message processing during streaming</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v7-dom">DOM Optimization</h2>
+      <div class="collapsible-section" data-section-content="v7-dom">
+        <ul>
+          <li><strong>Collapsed-by-default tool blocks</strong>: tool_use and tool_result content collapsed, showing only tool name + summary</li>
+          <li>Reduces visible DOM nodes to ~2700 at any time (vs. 10K+ without collapsing)</li>
+          <li>User can expand individual tool blocks on click</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v7-memory">Memory Budget</h2>
+      <div class="collapsible-section" data-section-content="v7-memory">
+        <ul>
+          <li>Target: <strong>~50MB per active session</strong> at 10K messages</li>
+          <li>Total budget: ~66MB with message eviction (oldest messages removed when budget exceeded)</li>
+          <li>Evicted messages available via backend API (session history endpoint)</li>
+          <li>Memory monitoring via <code>performance.memory</code> API (Chrome) with fallback estimation</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v7-search">Two-Phase Search</h2>
+      <div class="collapsible-section" data-section-content="v7-search">
+        <ul>
+          <li><strong>Phase 1</strong>: Client-side <code>indexOf</code> search across in-memory messages (instant results)</li>
+          <li><strong>Phase 2</strong>: Backend fallback for evicted messages (<code>GET /api/sessions/{id}/search?q=...</code>)</li>
+          <li>Results merged and deduplicated by message sequence number</li>
+        </ul>
+      </div>
+
+      <div class="cumulative-list">
+        <h4>Cumulative Architecture (V1 through V7)</h4>
+        <ul>
+          <li>V1: Three-tier arch, SDK, data model, frontend</li>
+          <li>V2: Auth, CORS, Unix socket, permissions, cost controls</li>
+          <li>V3: Memory budgets, DB pool, batch inserts, multiplexed SSE</li>
+          <li>V4: Crash detection, reconciliation, circuit breaker, shutdown</li>
+          <li>V5: Numeric money, JSONB, ENUMs, indexes, partitioning</li>
+          <li>V6: Protocol handshake, reconnect, ACK backpressure, priority lanes</li>
+          <li class="current">V7: useSyncExternalStore, external message store, virtual scroll, WeakMap markdown cache, rAF batching, collapsed tools, ~50MB memory budget, two-phase search</li>
+        </ul>
+      </div>
+    `,
+    feedback: [
+      { reviewer: "Frontend UX Expert", avatarClass: "frontend", points: [
+        "useSyncExternalStore with selectors is the correct modern pattern for high-frequency updates.",
+        "Storing messages outside React state is essential for 10K+ message performance.",
+        "Virtual scroll with ResizeObserver handles variable-height messages correctly.",
+        "WeakMap cache is elegant -- automatic GC when messages are evicted.",
+        "The 200ms markdown parse debounce may need tuning. Consider 100ms for shorter responses."
+      ]},
+      { reviewer: "Performance Reviewer", avatarClass: "performance", points: [
+        "50MB per session is a reasonable budget. Monitor actual usage during beta.",
+        "Lazy-loaded highlight.js grammars prevent loading 500KB+ of unused language parsers.",
+        "rAF batching with document.hidden fallback prevents unnecessary rendering when tab is backgrounded."
+      ]}
+    ],
+    changes: [
+      { category: "State Management", items: [
+        "Replaced React Context with useSyncExternalStore + selector pattern (eliminates 90% re-renders)",
+        "Moved messages to Map<sessionId, Message[]> outside React state with version counter",
+        "Added React.memo on MessageBubble with stable callback references"
+      ]},
+      { category: "Rendering", items: [
+        "Implemented virtual scroll with position-absolute layout, heightMap, ResizeObserver",
+        "Added manual scroll anchoring for new message arrival",
+        "Added WeakMap-based markdown parse cache (auto-GC with evicted messages)",
+        "Added streaming text debounced markdown parsing (200ms pause triggers parse)",
+        "Replaced remark/rehype with lightweight custom markdown parser",
+        "Added lazy-loaded highlight.js for code blocks"
+      ]},
+      { category: "Performance", items: [
+        "Added rAF message batching with document.hidden fallback (500-message buffer cap)",
+        "Added collapsed-by-default tool blocks (~2700 visible DOM nodes max)",
+        "Set memory budget: ~50MB per session, ~66MB total with eviction",
+        "Implemented two-phase search: client-side indexOf + backend fallback for evicted messages"
+      ]}
+    ]
+  },
+
+  // ================================================================
+  // V8: Developer Experience & Deployment
+  // ================================================================
+  {
+    version: 8,
+    title: "Developer Experience & Deployment",
+    date: "2026-04-05",
+    status: "complete",
+    content: `
+      <h1>V8: Developer Experience &amp; Deployment</h1>
+      <p>Incorporates Round 7 feedback. Adds Makefile-based commands, prerequisite checker script, PID-file sidecar lifecycle, cross-platform considerations, configuration consolidation, structured logging, testing infrastructure, documentation, and actionable error messages.</p>
+
+      <h2 data-section="v8-make">Makefile Commands</h2>
+      <div class="collapsible-section" data-section-content="v8-make">
+        <div class="code-block">
+          <div class="code-block-header">Key Makefile Targets</div>
+          <pre><span class="keyword">make dev</span>        <span class="comment"># Start all services (Docker + sidecar)</span>
+<span class="keyword">make stop</span>       <span class="comment"># Stop all services gracefully</span>
+<span class="keyword">make logs</span>       <span class="comment"># Tail logs from all services</span>
+<span class="keyword">make status</span>     <span class="comment"># Show health of all components</span>
+<span class="keyword">make test</span>       <span class="comment"># Run all tests (backend + frontend + sidecar)</span>
+<span class="keyword">make setup</span>      <span class="comment"># Run prerequisite checker + initial config</span>
+<span class="keyword">make sidecar</span>    <span class="comment"># Start sidecar only (for development)</span>
+<span class="keyword">make migrate</span>    <span class="comment"># Run database migrations</span></pre>
+        </div>
+      </div>
+
+      <h2 data-section="v8-setup">Prerequisite Checker</h2>
+      <div class="collapsible-section" data-section-content="v8-setup">
+        <p><code>scripts/setup.sh</code> checks for:</p>
+        <ul>
+          <li>Docker and Docker Compose installed and running</li>
+          <li>Python 3.12+ available on host</li>
+          <li>Claude CLI installed (<code>claude --version</code>)</li>
+          <li>Required ports available (3000, 8000, 5432)</li>
+          <li><code>.env</code> file exists with required variables</li>
+          <li>Claude CLI authenticated (<code>~/.claude/</code> directory exists)</li>
+        </ul>
+        <p>Outputs clear pass/fail for each check with remediation instructions.</p>
+      </div>
+
+      <h2 data-section="v8-sidecar">Sidecar Lifecycle (PID-file based)</h2>
+      <div class="collapsible-section" data-section-content="v8-sidecar">
+        <ul>
+          <li>PID written to <code>/tmp/pm-sidecar.pid</code> on startup</li>
+          <li><code>make dev</code> starts sidecar in background, stores PID</li>
+          <li><code>make stop</code> reads PID file, sends SIGTERM, waits for clean shutdown</li>
+          <li>No systemd/launchd for dev environment (keep it simple)</li>
+          <li>Stale PID detection: check if process exists before starting</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v8-cross">Cross-Platform Considerations</h2>
+      <div class="collapsible-section" data-section-content="v8-cross">
+        <table class="schema-table">
+          <thead><tr><th>Platform</th><th>Sidecar</th><th>Docker</th></tr></thead>
+          <tbody>
+            <tr><td>macOS</td><td>Unix socket (default)</td><td>host.docker.internal built-in</td></tr>
+            <tr><td>Linux</td><td>Unix socket (default)</td><td>extra_hosts: host.docker.internal:host-gateway</td></tr>
+            <tr><td>Windows</td><td>TCP fallback (named pipes not universal)</td><td>host.docker.internal built-in (Docker Desktop)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 data-section="v8-config">Configuration Consolidation</h2>
+      <div class="collapsible-section" data-section-content="v8-config">
+        <ul>
+          <li>Expanded <code>.env.example</code> with orchestrator section (all new env vars documented)</li>
+          <li>Pydantic <code>Settings</code> class validates all config at startup</li>
+          <li>Invalid config fails fast with clear error message</li>
+        </ul>
+        <div class="code-block">
+          <div class="code-block-header">.env.example (orchestrator section)</div>
+          <pre><span class="comment"># === Orchestrator Config ===</span>
+ORCHESTRATOR_SOCKET_PATH=<span class="string">/tmp/promptmanager-sidecar.sock</span>
+ORCHESTRATOR_MAX_SESSIONS=<span class="string">5</span>
+ORCHESTRATOR_SESSION_COST_CAP=<span class="string">5.00</span>
+ORCHESTRATOR_DAILY_COST_CAP=<span class="string">50.00</span>
+ORCHESTRATOR_MEMORY_BUDGET_MB=<span class="string">2048</span>
+ORCHESTRATOR_MESSAGE_RETENTION_DAYS=<span class="string">30</span>
+ORCHESTRATOR_PERMISSION_MODE=<span class="string">standard</span>
+PM_AUTH_SECRET=<span class="string">change-me-in-production</span></pre>
+        </div>
+      </div>
+
+      <h2 data-section="v8-logging">Structured Logging</h2>
+      <div class="collapsible-section" data-section-content="v8-logging">
+        <ul>
+          <li><strong>structlog</strong> for JSON-formatted structured logging</li>
+          <li>Correlation IDs propagated across request lifecycle</li>
+          <li>Key fields: timestamp, level, service, request_id, session_id</li>
+          <li>Separate log streams for backend and sidecar</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v8-test">Testing Infrastructure</h2>
+      <div class="collapsible-section" data-section-content="v8-test">
+        <ul>
+          <li><strong>Backend</strong>: pytest + httpx (async test client), mock SDK for sidecar tests</li>
+          <li><strong>Frontend</strong>: vitest + React Testing Library, WebSocket mock</li>
+          <li><strong>Sidecar</strong>: pytest with mock Claude CLI subprocess</li>
+          <li><strong>.dockerignore</strong> files added for build optimization</li>
+          <li>Dev vs prod Dockerfile separation (<code>Dockerfile.dev</code> with <code>--reload</code>)</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v8-docs">Documentation</h2>
+      <div class="collapsible-section" data-section-content="v8-docs">
+        <ul>
+          <li><strong>README.md</strong>: project overview, quick start, architecture diagram</li>
+          <li><strong>ARCHITECTURE.md</strong>: detailed component descriptions and data flow</li>
+          <li><strong>DEVELOPMENT.md</strong>: local setup, running tests, common tasks</li>
+          <li><strong>TROUBLESHOOTING.md</strong>: common issues and solutions</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v8-errors">Actionable Error Messages</h2>
+      <div class="collapsible-section" data-section-content="v8-errors">
+        <ul>
+          <li><strong>Sidecar down</strong>: "Cannot connect to orchestrator sidecar. Run 'make sidecar' to start it."</li>
+          <li><strong>CLI not installed</strong>: "Claude CLI not found. Install: npm install -g @anthropic-ai/claude-code"</li>
+          <li><strong>Auth expired</strong>: "Authentication session expired. Please log in again."</li>
+          <li>Frontend connection status component: green/yellow/red dot in header</li>
+        </ul>
+      </div>
+
+      <div class="cumulative-list">
+        <h4>Cumulative Architecture (V1 through V8)</h4>
+        <ul>
+          <li>V1: Three-tier arch, SDK, data model, frontend</li>
+          <li>V2: Auth, CORS, Unix socket, permissions, cost controls</li>
+          <li>V3: Memory budgets, DB pool, batch inserts, multiplexed SSE</li>
+          <li>V4: Crash detection, reconciliation, circuit breaker, shutdown</li>
+          <li>V5: Numeric money, JSONB, ENUMs, indexes, partitioning</li>
+          <li>V6: Protocol handshake, reconnect, ACK backpressure, priority lanes</li>
+          <li>V7: useSyncExternalStore, virtual scroll, markdown cache, rAF batching</li>
+          <li class="current">V8: Makefile, setup.sh, PID sidecar, cross-platform, structlog, pytest/vitest, documentation, actionable errors</li>
+        </ul>
+      </div>
+    `,
+    feedback: [
+      { reviewer: "DevEx Reviewer", avatarClass: "devex", points: [
+        "Makefile with unified commands is the right approach for a multi-component project.",
+        "Prerequisite checker prevents the most common setup failures.",
+        "PID-file based sidecar management is appropriate for dev. Production may need process supervisor.",
+        "Cross-platform table is helpful. Windows TCP fallback should be clearly documented as less secure.",
+        ".env.example with all orchestrator vars prevents config guessing."
+      ]},
+      { reviewer: "Systems Architect", avatarClass: "architecture", points: [
+        "structlog with correlation IDs enables tracing requests across backend and sidecar.",
+        "Test infrastructure with mock SDK is essential for CI/CD without actual Claude CLI.",
+        "Dev vs prod Dockerfile separation prevents accidentally shipping with --reload in production."
+      ]}
+    ],
+    changes: [
+      { category: "Developer Tooling", items: [
+        "Added Makefile with unified commands: make dev, stop, logs, status, test, setup, sidecar, migrate",
+        "Added scripts/setup.sh prerequisite checker (Docker, Python, Claude CLI, ports)",
+        "Added PID-file based sidecar lifecycle management in Makefile"
+      ]},
+      { category: "Configuration", items: [
+        "Added cross-platform support: TCP fallback for Windows, extra_hosts for Linux",
+        "Expanded .env.example with orchestrator section, all vars documented",
+        "Added Pydantic Settings class for startup config validation"
+      ]},
+      { category: "Quality", items: [
+        "Added structlog for JSON structured logging with correlation IDs",
+        "Added .dockerignore files and dev/prod Dockerfile separation",
+        "Added testing infrastructure: pytest+httpx (backend), vitest (frontend), mock SDK (sidecar)",
+        "Added documentation: README, ARCHITECTURE, DEVELOPMENT, TROUBLESHOOTING",
+        "Added actionable error messages and frontend connection status indicator"
+      ]}
+    ]
+  },
+
+  // ================================================================
+  // V9: UX Coherence & Integration
+  // ================================================================
+  {
+    version: 9,
+    title: "UX Coherence & Integration",
+    date: "2026-04-05",
+    status: "complete",
+    content: `
+      <h1>V9: UX Coherence &amp; Integration</h1>
+      <p>Incorporates Round 8 feedback. Redesigns session UX to integrate seamlessly with existing PromptManager: inline session drawer on GroupPage, unified Activity page, sidecar health checks, session defaults, first-run guide, global approval notifications, and keyboard shortcuts.</p>
+
+      <h2 data-section="v9-drawer">Inline Session Panel (Drawer)</h2>
+      <div class="collapsible-section" data-section-content="v9-drawer">
+        <div class="callout"><strong>Key Change:</strong> V1-V8 navigated to a separate /sessions page. V9 keeps users on the GroupPage -- the session opens as a slide-in drawer panel that replaces the preview pane.</div>
+        <ul>
+          <li>"Send to Claude" opens a drawer (right side) on the GroupPage instead of navigating away</li>
+          <li>Users stay in context of their group/template while interacting with Claude</li>
+          <li>URL updates to <code>/groups/{id}/session/{sessionId}</code> for deep-linking</li>
+          <li>Drawer can be full-width or split-view (group on left, session on right)</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v9-execute">Visual Differentiation: "Send to Claude"</h2>
+      <div class="collapsible-section" data-section-content="v9-execute">
+        <ul>
+          <li>"Send to Claude" button placed in a separate <strong>"Execute" section</strong> with distinct styling</li>
+          <li>Different visual treatment from "Copy to Clipboard" to indicate it triggers an action, not just data transfer</li>
+          <li><strong>Confirmation step</strong>: inline expansion showing rendered prompt + config (model, permission mode, working dir) before launch</li>
+          <li>User can edit config inline before confirming</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v9-activity">Unified Activity Page</h2>
+      <div class="collapsible-section" data-section-content="v9-activity">
+        <ul>
+          <li>Merge History (task executions) + Sessions into one <strong>"Activity"</strong> page</li>
+          <li>Tabs: <strong>"Saved Prompts"</strong> (existing task_executions) | <strong>"Claude Sessions"</strong> (new)</li>
+          <li>No separate "Sessions" link in sidebar</li>
+          <li>Instead: <strong>ambient "Active Sessions" section</strong> in sidebar showing count + pulse indicator</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v9-health">Sidecar Health on App Load</h2>
+      <div class="collapsible-section" data-section-content="v9-health">
+        <ul>
+          <li>Frontend checks sidecar health via backend on app load</li>
+          <li>"Send to Claude" button grayed out with tooltip if sidecar is offline</li>
+          <li>Periodic re-check (every 30s) to detect sidecar coming online</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v9-defaults">Session Defaults Per Group</h2>
+      <div class="collapsible-section" data-section-content="v9-defaults">
+        <ul>
+          <li>New <code>session_defaults</code> JSONB column on prompt_groups table</li>
+          <li>Stores: default model, permission profile, working directory, max turns</li>
+          <li>Pre-populates session creation form, user can override</li>
+          <li>Auto-generated session names: <code>"{GroupName} / {TemplateName} -- {timestamp}"</code></li>
+        </ul>
+      </div>
+
+      <h2 data-section="v9-guide">First-Run Guide</h2>
+      <div class="collapsible-section" data-section-content="v9-guide">
+        <ul>
+          <li>On first "Send to Claude" click: inline guide explaining the flow</li>
+          <li>Covers: what happens when you send, how approvals work, how to abort</li>
+          <li>Dismissable, does not show again (stored in localStorage)</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v9-approvals">Global Approval Notifications</h2>
+      <div class="collapsible-section" data-section-content="v9-approvals">
+        <ul>
+          <li><strong>Sidebar badge</strong>: count of pending approvals across all sessions</li>
+          <li><strong>Toast notification</strong>: appears when approval is needed, clickable to focus session</li>
+          <li><strong>Browser Notification API</strong>: desktop notification when tab is not focused</li>
+          <li><strong>Approval queue</strong>: "Approve All" / "Review Each" for batched tool calls</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v9-links">Bidirectional Links</h2>
+      <div class="collapsible-section" data-section-content="v9-links">
+        <ul>
+          <li>Sessions show source template link (click to go back to group/template)</li>
+          <li>Groups show "Recent Sessions" section with last 5 sessions</li>
+          <li><strong>Auto-create TaskExecution</strong> on session completion (saves final output as a history record)</li>
+          <li><strong>"Re-run with same prompt"</strong> action on completed sessions</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v9-responsive">Responsive Design &amp; Keyboard Shortcuts</h2>
+      <div class="collapsible-section" data-section-content="v9-responsive">
+        <h3>Breakpoints</h3>
+        <ul>
+          <li><strong>1200px+</strong>: Full layout (sidebar + content + session drawer)</li>
+          <li><strong>900px-1199px</strong>: Collapsed sidebar (icon only)</li>
+          <li><strong>&lt;900px</strong>: Hamburger menu, full-screen session view</li>
+        </ul>
+        <h3>Keyboard Shortcuts</h3>
+        <table class="schema-table">
+          <thead><tr><th>Key</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td>Ctrl+Enter</td><td>Send message / confirm action</td></tr>
+            <tr><td>A / Y</td><td>Approve pending tool call</td></tr>
+            <tr><td>D / N</td><td>Deny pending tool call</td></tr>
+            <tr><td>Ctrl+C</td><td>Abort current session</td></tr>
+            <tr><td>?</td><td>Show keyboard shortcut help</td></tr>
+          </tbody>
+        </table>
+        <h3>Shared Component Library</h3>
+        <p>Button, Card, Input, Badge, Toast components standardized across PromptManager and orchestrator features.</p>
+      </div>
+
+      <div class="cumulative-list">
+        <h4>Cumulative Architecture (V1 through V9)</h4>
+        <ul>
+          <li>V1: Three-tier arch, SDK, data model, frontend</li>
+          <li>V2: Auth, CORS, Unix socket, permissions, cost controls</li>
+          <li>V3: Memory budgets, DB pool, batch inserts, multiplexed SSE</li>
+          <li>V4: Crash detection, reconciliation, circuit breaker, shutdown</li>
+          <li>V5: Numeric money, JSONB, ENUMs, indexes, partitioning</li>
+          <li>V6: Protocol handshake, reconnect, ACK backpressure, priority lanes</li>
+          <li>V7: useSyncExternalStore, virtual scroll, markdown cache, rAF batching</li>
+          <li>V8: Makefile, setup.sh, structlog, testing, documentation</li>
+          <li class="current">V9: Inline session drawer, unified Activity page, approval notifications, session defaults, keyboard shortcuts, responsive breakpoints, shared components</li>
+        </ul>
+      </div>
+    `,
+    feedback: [
+      { reviewer: "UX Reviewer", avatarClass: "ux", points: [
+        "Inline session drawer is a huge improvement over navigating to a separate page. Users stay in context.",
+        "Confirmation step before launch prevents accidental session creation.",
+        "Unified Activity page reduces navigation complexity. Two tabs is cleaner than two sidebar links.",
+        "Global approval notifications (sidebar + toast + browser) provide appropriate urgency levels.",
+        "Keyboard shortcuts match terminal conventions (A/Y for approve, D/N for deny). Good muscle memory."
+      ]},
+      { reviewer: "Frontend UX Expert", avatarClass: "frontend", points: [
+        "Deep-linking with /groups/{id}/session/{sessionId} enables sharing session URLs.",
+        "Session defaults per group reduces repetitive configuration.",
+        "First-run guide should be skippable and re-accessible from settings.",
+        "Responsive breakpoints cover the common device ranges. Test on iPad (1024px) specifically."
+      ]}
+    ],
+    changes: [
+      { category: "Navigation & Layout", items: [
+        "Replaced separate /sessions page with inline session drawer on GroupPage",
+        "Added URL updates to /groups/{id}/session/{sessionId} for deep-linking",
+        "Added visual differentiation: 'Send to Claude' in separate Execute section",
+        "Added confirmation step showing rendered prompt + config before launch",
+        "Merged History + Sessions into unified Activity page with tabs"
+      ]},
+      { category: "Session UX", items: [
+        "Removed separate 'Sessions' sidebar link; added ambient 'Active Sessions' section with count/pulse",
+        "Added sidecar health check on app load (gray out 'Send to Claude' if offline)",
+        "Added session_defaults JSONB column on prompt_groups for per-group defaults",
+        "Added first-run inline guide on initial 'Send to Claude' click",
+        "Added auto-generated session names: '{GroupName} / {TemplateName} -- {timestamp}'"
+      ]},
+      { category: "Notifications & Links", items: [
+        "Added global approval notifications: sidebar badge, toast, browser Notification API",
+        "Added approval queue with 'Approve All' / 'Review Each' for batched tool calls",
+        "Added bidirectional links: sessions show source template, groups show recent sessions",
+        "Added auto-create TaskExecution on session completion",
+        "Added 'Re-run with same prompt' action on completed sessions"
+      ]},
+      { category: "Polish", items: [
+        "Added responsive breakpoints: 1200px (full), 900px (collapsed sidebar), <900px (hamburger)",
+        "Added keyboard shortcuts: Ctrl+Enter, A/Y (approve), D/N (deny), Ctrl+C (abort), ? (help)",
+        "Added shared component library: Button, Card, Input, Badge, Toast"
+      ]}
+    ]
+  },
+
+  // ================================================================
+  // V10: Production Readiness & Observability
+  // ================================================================
+  {
+    version: 10,
+    title: "Production Readiness & Observability",
+    date: "2026-04-05",
+    status: "complete",
+    content: `
+      <h1>V10: Production Readiness &amp; Observability</h1>
+      <p>Incorporates Round 9 feedback. Adds Prometheus metrics, alerting, structured logging standards, request tracing with correlation IDs, performance baselines, database backup, data export/import, upgrade runbook, configuration validation, security auditing, and capacity planning.</p>
+
+      <h2 data-section="v10-metrics">Monitoring: Prometheus Metrics</h2>
+      <div class="collapsible-section" data-section-content="v10-metrics">
+        <ul>
+          <li><strong>prometheus-client</strong> Python library with <code>promptmgr_</code> metric prefix</li>
+          <li><strong>/api/metrics</strong> endpoint exposing all metrics in Prometheus format</li>
+        </ul>
+        <h3>Metric Categories</h3>
+        <table class="schema-table">
+          <thead><tr><th>Category</th><th>Example Metrics</th></tr></thead>
+          <tbody>
+            <tr><td>HTTP</td><td>promptmgr_http_requests_total, promptmgr_http_request_duration_seconds</td></tr>
+            <tr><td>Database</td><td>promptmgr_db_query_duration_seconds, promptmgr_db_pool_connections</td></tr>
+            <tr><td>WebSocket</td><td>promptmgr_ws_connections_active, promptmgr_ws_messages_total</td></tr>
+            <tr><td>Sidecar</td><td>promptmgr_sidecar_health_status, promptmgr_sidecar_latency_seconds</td></tr>
+            <tr><td>Sessions</td><td>promptmgr_sessions_active, promptmgr_sessions_total, promptmgr_session_duration_seconds</td></tr>
+            <tr><td>Business</td><td>promptmgr_tokens_total, promptmgr_cost_usd_total, promptmgr_approvals_total</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 data-section="v10-alerts">Alerting</h2>
+      <div class="collapsible-section" data-section-content="v10-alerts">
+        <ul>
+          <li><strong>File-based alert log</strong>: <code>alerts.jsonl</code> for persistent alert history</li>
+          <li><strong>Desktop notifications</strong> for critical alerts (via browser Notification API)</li>
+          <li>Severity levels: <strong>CRITICAL</strong> (immediate action), <strong>WARNING</strong> (investigate soon), <strong>INFO</strong> (awareness)</li>
+        </ul>
+        <h3>Alert Rules</h3>
+        <table class="schema-table">
+          <thead><tr><th>Alert</th><th>Severity</th><th>Condition</th></tr></thead>
+          <tbody>
+            <tr><td>Sidecar Down</td><td>CRITICAL</td><td>3 consecutive health check failures</td></tr>
+            <tr><td>High Error Rate</td><td>CRITICAL</td><td>&gt;5% HTTP 5xx in 5-minute window</td></tr>
+            <tr><td>Budget Approaching</td><td>WARNING</td><td>Daily cost &gt;80% of cap</td></tr>
+            <tr><td>Memory Pressure</td><td>WARNING</td><td>Sidecar memory &gt;80% of budget</td></tr>
+            <tr><td>Session Stuck</td><td>WARNING</td><td>Session in non-terminal state &gt;30 minutes</td></tr>
+            <tr><td>DB Pool Exhausted</td><td>CRITICAL</td><td>Connection pool at max_overflow</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 data-section="v10-logging">Structured Logging Standard</h2>
+      <div class="collapsible-section" data-section-content="v10-logging">
+        <ul>
+          <li><strong>structlog</strong> with JSON output for all services</li>
+          <li>Mandatory fields: <code>timestamp</code>, <code>level</code>, <code>service</code>, <code>boot_id</code>, <code>request_id</code>, <code>session_id</code>, <code>correlation_id</code></li>
+          <li>Log levels: DEBUG (dev only), INFO (request lifecycle), WARNING (degraded), ERROR (failures), CRITICAL (system-level)</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v10-tracing">Request Tracing</h2>
+      <div class="collapsible-section" data-section-content="v10-tracing">
+        <ul>
+          <li><strong>X-Correlation-ID</strong> header propagated: Browser &rarr; Backend &rarr; Sidecar &rarr; CLI</li>
+          <li>Generated by frontend if not present, attached to all WebSocket messages and REST calls</li>
+          <li>Enables tracing a single user action across all three tiers</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v10-perf">Performance Baselines</h2>
+      <div class="collapsible-section" data-section-content="v10-perf">
+        <table class="schema-table">
+          <thead><tr><th>Endpoint/Operation</th><th>P50 Target</th><th>P99 Target</th></tr></thead>
+          <tbody>
+            <tr><td>GET /api/health</td><td>&lt;5ms</td><td>&lt;20ms</td></tr>
+            <tr><td>Prompt render</td><td>&lt;5ms</td><td>&lt;25ms</td></tr>
+            <tr><td>Session create</td><td>&lt;200ms</td><td>&lt;1s</td></tr>
+            <tr><td>WS message relay</td><td>&lt;50ms</td><td>&lt;200ms</td></tr>
+            <tr><td>DB query (list sessions)</td><td>&lt;10ms</td><td>&lt;50ms</td></tr>
+            <tr><td>Frontend initial load</td><td>&lt;1.5s</td><td>&lt;3s</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 data-section="v10-backup">Database Backup &amp; Data Portability</h2>
+      <div class="collapsible-section" data-section-content="v10-backup">
+        <ul>
+          <li><strong>Daily pg_dump</strong> with 30-day retention</li>
+          <li><strong>Pre-migration backups</strong>: automatic pg_dump before any Alembic migration</li>
+          <li><strong>Data export/import API</strong>:
+            <ul>
+              <li><code>GET /api/export/sessions?format=json</code> -- export session history</li>
+              <li><code>POST /api/import/sessions</code> -- import from JSON backup</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+
+      <h2 data-section="v10-upgrade">Upgrade Runbook</h2>
+      <div class="collapsible-section" data-section-content="v10-upgrade">
+        <div class="phase-list">
+          <div class="phase-item"><div class="phase-number">1</div><div class="phase-content"><div class="phase-title">Pre-flight</div><div class="phase-desc">Run pg_dump backup, verify disk space, check for active sessions</div></div></div>
+          <div class="phase-item"><div class="phase-number">2</div><div class="phase-content"><div class="phase-title">Drain Sidecar</div><div class="phase-desc">Stop accepting new sessions, wait for active sessions to complete (timeout: 5min)</div></div></div>
+          <div class="phase-item"><div class="phase-number">3</div><div class="phase-content"><div class="phase-title">Migrate</div><div class="phase-desc">Run alembic upgrade head, verify migration success</div></div></div>
+          <div class="phase-item"><div class="phase-number">4</div><div class="phase-content"><div class="phase-title">Rolling Restart</div><div class="phase-desc">Restart backend (docker compose up -d --build backend), then sidecar, then frontend</div></div></div>
+          <div class="phase-item"><div class="phase-number">5</div><div class="phase-content"><div class="phase-title">Verify</div><div class="phase-desc">Health checks, create test session, verify metrics flowing</div></div></div>
+        </div>
+        <ul>
+          <li>API version headers: <code>X-API-Version</code>, <code>X-Schema-Version</code> on all responses</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v10-validate">Configuration Validation</h2>
+      <div class="collapsible-section" data-section-content="v10-validate">
+        <p>Startup checks (fail fast with clear error if any fail):</p>
+        <ul>
+          <li>Database connection and migrations up-to-date</li>
+          <li>Required ports available</li>
+          <li>Sidecar reachable (warning, not failure -- graceful degradation)</li>
+          <li>Disk space sufficient (&gt;1GB free for logs/data)</li>
+          <li>Environment variables present and valid</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v10-security-audit">Security Audit Logging</h2>
+      <div class="collapsible-section" data-section-content="v10-security-audit">
+        <ul>
+          <li>Dedicated <code>security-audit.jsonl</code> log file (append-only)</li>
+          <li>Events logged: auth attempts, session creation/termination, tool approvals/denials, path traversal attempts, permission mode changes, budget overrides</li>
+          <li>Each entry includes: timestamp, event_type, actor, session_id, details, outcome</li>
+        </ul>
+      </div>
+
+      <h2 data-section="v10-capacity">Capacity Planning</h2>
+      <div class="collapsible-section" data-section-content="v10-capacity">
+        <ul>
+          <li><strong>psutil system metrics</strong>: CPU, memory, disk usage tracked every 60s</li>
+          <li><strong>Growth projections</strong>: estimate DB growth based on session/message rate</li>
+          <li><strong>Threshold warnings</strong>: alert when disk &lt;20% free, memory &lt;20% free</li>
+          <li><strong>Debug endpoints</strong>:
+            <ul>
+              <li><code>/api/debug/capacity-report</code>: current resource usage + projections</li>
+              <li><code>/api/debug/perf-report</code>: P50/P99 latencies for all endpoints</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+
+      <div class="cumulative-list">
+        <h4>Complete Architecture (V1 through V10)</h4>
+        <ul>
+          <li>V1: Three-tier arch (Browser + Docker Backend + Host Sidecar), claude_code_sdk, WS protocol, data model</li>
+          <li>V2: Session auth, CORS lockdown, Unix domain socket, permission profiles, cost controls, audit</li>
+          <li>V3: Memory budgets, DB pool tuning, batch inserts, multiplexed SSE, process groups, backpressure</li>
+          <li>V4: Crash detection, session reconciliation, orphan cleanup, circuit breaker, three-phase shutdown</li>
+          <li>V5: Numeric(10,6) money, JSONB, PostgreSQL ENUMs, 6 indexes, soft delete, monthly partitioning</li>
+          <li>V6: Protocol handshake, atomic reconnect, ACK backpressure, priority lanes, structured errors, dual heartbeat</li>
+          <li>V7: useSyncExternalStore, external message store, virtual scroll, WeakMap cache, rAF batching, ~50MB budget</li>
+          <li>V8: Makefile, setup.sh, PID sidecar, cross-platform, structlog, pytest/vitest, documentation</li>
+          <li>V9: Inline session drawer, unified Activity page, approval notifications, session defaults, keyboard shortcuts</li>
+          <li class="current">V10: Prometheus metrics, alerting, X-Correlation-ID tracing, perf baselines, pg_dump backups, data export/import, upgrade runbook, security audit log, capacity planning</li>
+        </ul>
+      </div>
+    `,
+    feedback: [
+      { reviewer: "Ops Reviewer", avatarClass: "ops", points: [
+        "Prometheus metrics with promptmgr_ prefix follow best practices for namespace isolation.",
+        "/api/metrics endpoint enables both Prometheus scraping and ad-hoc debugging.",
+        "Alert rules cover the critical failure modes. Consider adding WS disconnect rate alert.",
+        "Upgrade runbook with sidecar drain is essential for zero-downtime upgrades.",
+        "Database backup before migration is a must-have. Good that it's automated."
+      ]},
+      { reviewer: "Security Reviewer", avatarClass: "security", points: [
+        "Dedicated security-audit.jsonl is correct for compliance. Ensure it's on a separate volume for tamper resistance.",
+        "X-Correlation-ID propagation enables full request tracing for incident response.",
+        "Configuration validation at startup catches misconfigurations before they cause runtime failures.",
+        "Capacity planning with threshold warnings prevents silent resource exhaustion."
+      ]},
+      { reviewer: "Systems Architect", avatarClass: "architecture", points: [
+        "Performance baselines provide concrete targets for regression testing.",
+        "Data export/import API enables backup portability and disaster recovery.",
+        "The debug endpoints (capacity-report, perf-report) should be auth-protected in production.",
+        "This completes the design -- V10 covers the operational concerns needed for production deployment."
+      ]}
+    ],
+    changes: [
+      { category: "Monitoring", items: [
+        "Added prometheus-client with promptmgr_* prefix and /api/metrics endpoint",
+        "Defined HTTP, DB, WS, sidecar, session, and business metrics",
+        "Added file-based alert log + desktop notifications with CRITICAL/WARNING/INFO severity",
+        "Added performance baselines with P50/P99 targets for all endpoints"
+      ]},
+      { category: "Logging & Tracing", items: [
+        "Standardized structlog with mandatory fields (timestamp, level, service, boot_id, request_id, session_id, correlation_id)",
+        "Added X-Correlation-ID propagation: browser -> backend -> sidecar -> CLI",
+        "Added dedicated security-audit.jsonl for auth events, tool approvals, path traversal"
+      ]},
+      { category: "Data Safety", items: [
+        "Added daily pg_dump with 30-day retention and pre-migration backups",
+        "Added data export/import API endpoints for session portability",
+        "Added API version headers (X-API-Version, X-Schema-Version)"
+      ]},
+      { category: "Operations", items: [
+        "Added upgrade runbook: pre-flight, drain, migrate, rolling restart, verify",
+        "Added startup configuration validation (DB, migrations, ports, sidecar, disk space)",
+        "Added psutil system metrics for capacity planning with growth projections",
+        "Added /api/debug/capacity-report and /api/debug/perf-report endpoints"
+      ]}
+    ]
+  }
+];
+
+// ============================================================
+// DIFF DATA -- Summary diffs between versions
+// ============================================================
+const diffData = {
+  1: {
+    header: "V1 -- Initial version (all new)",
+    lines: [
+      { type: "hunk", text: "@@ New: Architecture @@ " },
+      { type: "added", text: "+ Three-tier: Browser <-WS-> Backend (Docker) <-REST/SSE-> Sidecar (Host) -> CLI" },
+      { type: "added", text: "+ Host-native sidecar for filesystem/CLI access" },
+      { type: "hunk", text: "@@ New: CLI Integration @@" },
+      { type: "added", text: "+ claude_code_sdk Python package (not raw subprocess)" },
+      { type: "added", text: "+ Typed message objects, bidirectional streaming, tool approval callback" },
+      { type: "hunk", text: "@@ New: Communication @@" },
+      { type: "added", text: "+ WebSocket (multiplexed) browser-to-backend" },
+      { type: "added", text: "+ REST + SSE backend-to-sidecar" },
+      { type: "hunk", text: "@@ New: Data Model @@" },
+      { type: "added", text: "+ claude_sessions table (UUID PK, status enum, config JSON)" },
+      { type: "added", text: "+ session_messages table (BIGINT PK, sequence, role enum)" },
+      { type: "hunk", text: "@@ New: Frontend @@" },
+      { type: "added", text: "+ /sessions route, virtual scroll, useReducer + Context" },
+      { type: "hunk", text: "@@ New: Security @@" },
+      { type: "added", text: "+ Sidecar on 127.0.0.1, bearer token, working dir allowlist" }
+    ]
+  },
+  2: {
+    header: "V2 vs V1 -- Security Hardening",
+    lines: [
+      { type: "hunk", text: "@@ Modified: Authentication (CRITICAL) @@" },
+      { type: "removed", text: "- No user authentication on backend" },
+      { type: "added", text: "+ Session-based auth: argon2-hashed secret, HTTP-only SameSite cookie" },
+      { type: "hunk", text: "@@ Modified: CORS (CRITICAL) @@" },
+      { type: "removed", text: "- Wildcard CORS (*)" },
+      { type: "added", text: "+ Explicit origin: http://localhost:3000 (configurable)" },
+      { type: "hunk", text: "@@ Modified: Sidecar Connection (CRITICAL) @@" },
+      { type: "removed", text: "- TCP 127.0.0.1:9100" },
+      { type: "added", text: "+ Unix domain socket /tmp/promptmanager-sidecar.sock + ephemeral token" },
+      { type: "hunk", text: "@@ Modified: Permissions (CRITICAL) @@" },
+      { type: "removed", text: "- Default: bypassPermissions" },
+      { type: "added", text: "+ Default: 'default' mode. Named profiles: readonly, standard, unrestricted" },
+      { type: "hunk", text: "@@ Added: New Security Features @@" },
+      { type: "added", text: "+ Prompt injection protection (<user-data> boundary tags)" },
+      { type: "added", text: "+ Docker network isolation (frontend-net, backend-net)" },
+      { type: "added", text: "+ Cost controls: $5/session, $50/day, 2 sessions/min" },
+      { type: "added", text: "+ WebSocket auth via cookie validation on handshake" },
+      { type: "added", text: "+ ANTHROPIC_API_KEY isolated to sidecar, redacted from logs" },
+      { type: "added", text: "+ Audit logging, encryption at rest, TOCTOU protection" }
+    ]
+  },
+  3: {
+    header: "V3 vs V2 -- Scalability & Resources",
+    lines: [
+      { type: "hunk", text: "@@ Added: Memory Management @@" },
+      { type: "added", text: "+ psutil memory budget enforcement (default 2GB for CLI processes)" },
+      { type: "added", text: "+ Docker resource limits (512M backend, 256M frontend)" },
+      { type: "hunk", text: "@@ Modified: Database @@" },
+      { type: "removed", text: "- Default SQLAlchemy pool settings" },
+      { type: "added", text: "+ pool_size=10, max_overflow=20, pool_pre_ping=True, pool_recycle=3600" },
+      { type: "removed", text: "- Per-message INSERT" },
+      { type: "added", text: "+ 100ms batch INSERT windows (bulk inserts)" },
+      { type: "hunk", text: "@@ Modified: Message Pipeline @@" },
+      { type: "removed", text: "- DB write blocks WebSocket relay" },
+      { type: "added", text: "+ WebSocket relay first, DB write async (never blocks UI)" },
+      { type: "hunk", text: "@@ Modified: Sidecar-Backend Communication @@" },
+      { type: "removed", text: "- One SSE connection per session" },
+      { type: "added", text: "+ Single multiplexed SSE stream with session IDs in envelope" },
+      { type: "hunk", text: "@@ Added: Process & Backpressure @@" },
+      { type: "added", text: "+ Process group management (os.setpgrp) for clean termination" },
+      { type: "added", text: "+ Working directory locking (warn on concurrent sessions)" },
+      { type: "added", text: "+ WS send buffer limit (1000 msgs), drop non-critical on overflow" },
+      { type: "added", text: "+ Session message retention policy (30 days)" }
+    ]
+  },
+  4: {
+    header: "V4 vs V3 -- Error Handling & Recovery",
+    lines: [
+      { type: "hunk", text: "@@ Added: Crash Detection & Recovery @@" },
+      { type: "added", text: "+ Sidecar health heartbeat every 5s + boot_id for restart detection" },
+      { type: "added", text: "+ Stale session reconciliation (mark as 'disconnected' on restart)" },
+      { type: "added", text: "+ Orphaned process cleanup with PID files + startup scan" },
+      { type: "added", text: "+ Backend restart recovery via lifespan handler" },
+      { type: "hunk", text: "@@ Added: Timeout Handling @@" },
+      { type: "added", text: "+ Approval timeout: asyncio.wait_for(5min), auto-deny on expiry" },
+      { type: "added", text: "+ Session stuck-state timeouts (30s for 'starting')" },
+      { type: "hunk", text: "@@ Added: Resilience Patterns @@" },
+      { type: "added", text: "+ Circuit breaker: closed -> open (5 fails) -> half-open (30s)" },
+      { type: "added", text: "+ Graceful degradation: PromptManager works without sidecar" },
+      { type: "added", text: "+ Per-session asyncio.Lock against race conditions" },
+      { type: "added", text: "+ Resource cleanup registry" },
+      { type: "hunk", text: "@@ Modified: State Machine @@" },
+      { type: "removed", text: "- States: starting, running, waiting_approval, completed, failed, terminated" },
+      { type: "added", text: "+ Added: disconnected, resuming, approval_timeout" },
+      { type: "hunk", text: "@@ Added: Data Integrity @@" },
+      { type: "added", text: "+ Idempotency tokens for sidecar requests" },
+      { type: "added", text: "+ Message dedup via (session_id, sequence) unique constraint" },
+      { type: "added", text: "+ Three-phase shutdown: interrupt(5s) -> disconnect(10s) -> SIGKILL(15s)" }
+    ]
+  },
+  5: {
+    header: "V5 vs V4 -- Data Model Optimization",
+    lines: [
+      { type: "hunk", text: "@@ Modified: Column Types @@" },
+      { type: "removed", text: "- total_cost_usd Float, cost_usd Float" },
+      { type: "added", text: "+ total_cost_usd Numeric(10,6), cost_usd Numeric(10,6)" },
+      { type: "removed", text: "- config JSON, metadata JSON, token_usage JSON" },
+      { type: "added", text: "+ config JSONB, metadata JSONB (4x faster, GIN-indexable)" },
+      { type: "removed", text: "- token_usage JSON blob" },
+      { type: "added", text: "+ Structured columns: token_count_input, token_count_output, token_count_cache_read, token_count_cache_create" },
+      { type: "hunk", text: "@@ Modified: Enum Types @@" },
+      { type: "removed", text: "- String-based status/role enums" },
+      { type: "added", text: "+ PostgreSQL native ENUM types: session_status, message_role, approval_resolution" },
+      { type: "hunk", text: "@@ Added: Indexes @@" },
+      { type: "added", text: "+ ix_sessions_active (partial: non-terminal status)" },
+      { type: "added", text: "+ ix_sessions_pending_approval (partial: waiting_approval)" },
+      { type: "added", text: "+ ix_sessions_group_status (composite)" },
+      { type: "added", text: "+ ix_messages_session_seq (composite, unique)" },
+      { type: "added", text: "+ ix_messages_created (retention cleanup)" },
+      { type: "added", text: "+ ix_sessions_deleted (soft delete filter)" },
+      { type: "hunk", text: "@@ Added: Data Management @@" },
+      { type: "added", text: "+ FK cascade: SET NULL for parents, CASCADE for children" },
+      { type: "added", text: "+ Soft delete (deleted_at column) on claude_sessions" },
+      { type: "added", text: "+ Monthly range partitioning on session_messages" },
+      { type: "added", text: "+ Three-phase migration: tables, CONCURRENTLY indexes, NOT VALID FK" }
+    ]
+  },
+  6: {
+    header: "V6 vs V5 -- WebSocket Protocol",
+    lines: [
+      { type: "hunk", text: "@@ Added: Protocol Messages @@" },
+      { type: "added", text: "+ protocol.hello / protocol.welcome (capability negotiation)" },
+      { type: "added", text: "+ protocol.ack (client message acknowledgement)" },
+      { type: "added", text: "+ session.resume / session.sync (reconnection)" },
+      { type: "added", text: "+ session.flowctl (server-side flow control)" },
+      { type: "added", text: "+ protocol.error (structured error with code + category)" },
+      { type: "hunk", text: "@@ Modified: Reconnection @@" },
+      { type: "removed", text: "- No reconnection protocol defined" },
+      { type: "added", text: "+ Atomic reconnection: resume -> sync -> live (no REST needed)" },
+      { type: "hunk", text: "@@ Modified: Backpressure @@" },
+      { type: "removed", text: "- Buffer limit + message dropping" },
+      { type: "added", text: "+ ACK-based: high-water mark at 200 unACKed messages" },
+      { type: "added", text: "+ Round-robin scheduling across sessions" },
+      { type: "added", text: "+ Priority lanes: HIGH (approvals), NORMAL (text), LOW (tool results)" },
+      { type: "hunk", text: "@@ Added: Connection Features @@" },
+      { type: "added", text: "+ Dual heartbeat: WS ping/pong (30s) + app-level (15s)" },
+      { type: "added", text: "+ Max message size 1MB with REST fallback for truncated content" },
+      { type: "added", text: "+ permessage-deflate compression" },
+      { type: "added", text: "+ Protocol versioning: 'orchestrator-v1' subprotocol" },
+      { type: "added", text: "+ Consolidated envelope: protocolVersion, timestamp, sessionId, sequence, requestId" }
+    ]
+  },
+  7: {
+    header: "V7 vs V6 -- Frontend Performance",
+    lines: [
+      { type: "hunk", text: "@@ Modified: State Management @@" },
+      { type: "removed", text: "- useReducer + React Context (causes unnecessary re-renders)" },
+      { type: "added", text: "+ useSyncExternalStore + selector pattern (90% fewer re-renders)" },
+      { type: "removed", text: "- Messages in React state tree" },
+      { type: "added", text: "+ Messages in Map<sessionId, Message[]> outside React, version counter triggers" },
+      { type: "hunk", text: "@@ Modified: Rendering @@" },
+      { type: "removed", text: "- Basic virtual scroll" },
+      { type: "added", text: "+ Position-absolute layout with heightMap + ResizeObserver + scroll anchoring" },
+      { type: "added", text: "+ React.memo on MessageBubble with stable callbacks" },
+      { type: "hunk", text: "@@ Modified: Markdown @@" },
+      { type: "removed", text: "- Standard markdown rendering on every update" },
+      { type: "added", text: "+ WeakMap parse cache (auto-GC with evicted messages)" },
+      { type: "added", text: "+ Streaming debounce: 200ms pause triggers parse, raw text during streaming" },
+      { type: "added", text: "+ Lightweight custom parser (no remark/rehype)" },
+      { type: "added", text: "+ highlight.js with lazy-loaded language grammars" },
+      { type: "hunk", text: "@@ Added: Performance @@" },
+      { type: "added", text: "+ rAF batching with document.hidden fallback (500-msg buffer)" },
+      { type: "added", text: "+ Collapsed-by-default tool blocks (~2700 visible DOM nodes)" },
+      { type: "added", text: "+ Memory budget: ~50MB/session, ~66MB total with eviction" },
+      { type: "added", text: "+ Two-phase search: client indexOf + backend fallback" }
+    ]
+  },
+  8: {
+    header: "V8 vs V7 -- Developer Experience",
+    lines: [
+      { type: "hunk", text: "@@ Added: Developer Tooling @@" },
+      { type: "added", text: "+ Makefile: make dev, stop, logs, status, test, setup, sidecar, migrate" },
+      { type: "added", text: "+ scripts/setup.sh prerequisite checker" },
+      { type: "added", text: "+ PID-file based sidecar lifecycle (no systemd/launchd)" },
+      { type: "hunk", text: "@@ Added: Cross-Platform @@" },
+      { type: "added", text: "+ Windows: TCP fallback (named pipes not universal)" },
+      { type: "added", text: "+ Linux: extra_hosts for host.docker.internal" },
+      { type: "hunk", text: "@@ Added: Configuration @@" },
+      { type: "added", text: "+ Expanded .env.example with all orchestrator variables" },
+      { type: "added", text: "+ Pydantic Settings class for startup validation" },
+      { type: "hunk", text: "@@ Added: Logging & Testing @@" },
+      { type: "added", text: "+ structlog JSON logging with correlation IDs" },
+      { type: "added", text: "+ .dockerignore + dev/prod Dockerfile separation" },
+      { type: "added", text: "+ pytest+httpx (backend), vitest (frontend), mock SDK (sidecar)" },
+      { type: "hunk", text: "@@ Added: Documentation @@" },
+      { type: "added", text: "+ README.md, ARCHITECTURE.md, DEVELOPMENT.md, TROUBLESHOOTING.md" },
+      { type: "added", text: "+ Actionable error messages for common failure modes" },
+      { type: "added", text: "+ Frontend connection status component (green/yellow/red)" }
+    ]
+  },
+  9: {
+    header: "V9 vs V8 -- UX Coherence",
+    lines: [
+      { type: "hunk", text: "@@ Modified: Session Navigation @@" },
+      { type: "removed", text: "- Navigate to separate /sessions page" },
+      { type: "added", text: "+ Inline session drawer on GroupPage (replaces preview pane)" },
+      { type: "added", text: "+ URL: /groups/{id}/session/{sessionId} for deep-linking" },
+      { type: "hunk", text: "@@ Modified: 'Send to Claude' UX @@" },
+      { type: "removed", text: "- Simple button next to 'Copy to Clipboard'" },
+      { type: "added", text: "+ Separate 'Execute' section with distinct styling" },
+      { type: "added", text: "+ Confirmation step: shows rendered prompt + config before launch" },
+      { type: "hunk", text: "@@ Modified: Navigation Structure @@" },
+      { type: "removed", text: "- Separate History page + Sessions page" },
+      { type: "added", text: "+ Unified Activity page: 'Saved Prompts' | 'Claude Sessions' tabs" },
+      { type: "removed", text: "- 'Sessions' sidebar link" },
+      { type: "added", text: "+ Ambient 'Active Sessions' sidebar section with count + pulse" },
+      { type: "hunk", text: "@@ Added: Session Features @@" },
+      { type: "added", text: "+ Sidecar health check on app load (gray out button if offline)" },
+      { type: "added", text: "+ session_defaults JSONB column on prompt_groups" },
+      { type: "added", text: "+ First-run inline guide on initial 'Send to Claude' click" },
+      { type: "added", text: "+ Auto-generated session names" },
+      { type: "hunk", text: "@@ Added: Notifications & Links @@" },
+      { type: "added", text: "+ Global approval notifications: badge + toast + browser Notification" },
+      { type: "added", text: "+ Approval queue with 'Approve All' / 'Review Each'" },
+      { type: "added", text: "+ Bidirectional links: sessions <-> templates <-> groups" },
+      { type: "added", text: "+ Auto-create TaskExecution on session completion" },
+      { type: "added", text: "+ 'Re-run with same prompt' on completed sessions" },
+      { type: "hunk", text: "@@ Added: Polish @@" },
+      { type: "added", text: "+ Responsive: 1200px (full), 900px (collapsed), <900px (hamburger)" },
+      { type: "added", text: "+ Keyboard: Ctrl+Enter, A/Y, D/N, Ctrl+C, ?" },
+      { type: "added", text: "+ Shared component library: Button, Card, Input, Badge, Toast" }
+    ]
+  },
+  10: {
+    header: "V10 vs V9 -- Production Readiness",
+    lines: [
+      { type: "hunk", text: "@@ Added: Monitoring @@" },
+      { type: "added", text: "+ prometheus-client with promptmgr_* prefix" },
+      { type: "added", text: "+ /api/metrics endpoint" },
+      { type: "added", text: "+ HTTP, DB, WS, sidecar, session, business metrics" },
+      { type: "hunk", text: "@@ Added: Alerting @@" },
+      { type: "added", text: "+ File-based alerts.jsonl + desktop notifications" },
+      { type: "added", text: "+ Rules: sidecar down, error rate, budget, memory, stuck session" },
+      { type: "hunk", text: "@@ Added: Logging & Tracing @@" },
+      { type: "added", text: "+ Mandatory log fields: timestamp, level, service, boot_id, request_id, session_id, correlation_id" },
+      { type: "added", text: "+ X-Correlation-ID propagated browser -> backend -> sidecar -> CLI" },
+      { type: "added", text: "+ Dedicated security-audit.jsonl" },
+      { type: "hunk", text: "@@ Added: Performance & Data @@" },
+      { type: "added", text: "+ Performance baselines: health <5ms P50, WS relay <50ms P50" },
+      { type: "added", text: "+ Daily pg_dump with 30-day retention" },
+      { type: "added", text: "+ Pre-migration automatic backups" },
+      { type: "added", text: "+ Data export/import API endpoints" },
+      { type: "hunk", text: "@@ Added: Operations @@" },
+      { type: "added", text: "+ Upgrade runbook: preflight -> drain -> migrate -> restart -> verify" },
+      { type: "added", text: "+ API version headers: X-API-Version, X-Schema-Version" },
+      { type: "added", text: "+ Startup configuration validation" },
+      { type: "added", text: "+ psutil capacity planning with growth projections" },
+      { type: "added", text: "+ /api/debug/capacity-report, /api/debug/perf-report" }
+    ]
+  }
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let currentVersion = 0;
+let currentTab = "design";
+let rightPanelOpen = true;
+let searchQuery = "";
+
+// ============================================================
+// RENDER: Sidebar version list
+// ============================================================
+function renderVersionList() {
+  const container = document.getElementById("version-list");
+  container.innerHTML = "";
+
+  const filtered = searchQuery
+    ? versions.filter((v) => versionMatchesSearch(v, searchQuery))
+    : versions;
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--text-muted);font-size:14px;display:block">No matching versions found.</div>';
+    return;
+  }
+
+  filtered.forEach((v) => {
+    const idx = versions.indexOf(v);
+    const item = document.createElement("div");
+    item.className = "version-item" + (idx === currentVersion ? " active" : "");
+    item.innerHTML = `
+      <div class="version-item-header">
+        <div class="version-dot ${v.status}"></div>
+        <div class="version-number">V${v.version}</div>
+      </div>
+      <div class="version-title">${v.title}</div>
+      <div class="version-date">${v.date}</div>
+    `;
+    item.addEventListener("click", () => selectVersion(idx));
+    container.appendChild(item);
+  });
+}
+
+// ============================================================
+// RENDER: Progress bar
+// ============================================================
+function updateProgress() {
+  const completed = versions.filter(v => v.status === "complete").length;
+  const percent = Math.round((completed / versions.length) * 100);
+  document.getElementById("progress-text").textContent = `Version ${currentVersion + 1} of ${versions.length}`;
+  document.getElementById("progress-percent").textContent = `${percent}%`;
+  document.getElementById("progress-fill").style.width = `${percent}%`;
+}
+
+// ============================================================
+// RENDER: Main content panels
+// ============================================================
+function renderDesignPanel() {
+  const v = versions[currentVersion];
+  document.getElementById("panel-design").innerHTML = `<div class="design-content">${v.content}</div>`;
+
+  document.querySelectorAll(".design-content h2[data-section]").forEach(h2 => {
+    h2.addEventListener("click", () => {
+      const sectionId = h2.getAttribute("data-section");
+      const section = document.querySelector(`.collapsible-section[data-section-content="${sectionId}"]`);
+      if (section) {
+        h2.classList.toggle("collapsed");
+        section.classList.toggle("collapsed");
+      }
+    });
+  });
+}
+
+function renderFeedbackPanel() {
+  const v = versions[currentVersion];
+  const panel = document.getElementById("panel-feedback");
+
+  if (!v.feedback || v.feedback.length === 0) {
+    panel.innerHTML = `
+      <div class="feedback-empty">
+        <div class="feedback-empty-icon">&#128172;</div>
+        <p>No feedback yet for Version ${v.version}.</p>
+      </div>`;
+    return;
+  }
+
+  const totalPoints = v.feedback.reduce((sum, fb) => sum + fb.points.length, 0);
+
+  let html = `
+    <div class="review-summary">
+      <div class="review-summary-title">Review Summary</div>
+      <div class="review-summary-stats">
+        <div class="review-stat">
+          <div class="review-stat-value">${v.feedback.length}</div>
+          <div class="review-stat-label">Reviewers</div>
+        </div>
+        <div class="review-stat">
+          <div class="review-stat-value">${totalPoints}</div>
+          <div class="review-stat-label">Points</div>
+        </div>
+        <div class="review-stat">
+          <div class="review-stat-value">V${v.version}</div>
+          <div class="review-stat-label">Version</div>
+        </div>
+      </div>
+      <div class="review-summary-desc">
+        ${v.version === 1
+          ? "Initial synthesis reviewed by three domain experts. Baseline design before dedicated review rounds."
+          : `Expert feedback collected during the V${v.version} review round, driving changes in V${v.version + 1 <= 10 ? v.version + 1 : 'final'}.`
+        }
+      </div>
+    </div>
+  `;
+
+  v.feedback.forEach(fb => {
+    const initials = fb.reviewer.split(" ").map(w => w[0]).join("");
+    html += `
+      <div class="feedback-card">
+        <div class="feedback-card-header">
+          <div class="feedback-avatar ${fb.avatarClass || ''}">${initials}</div>
+          <div class="feedback-reviewer">${fb.reviewer}</div>
+        </div>
+        <div class="feedback-points">
+          ${fb.points.map(p => `
+            <div class="feedback-point">
+              <span class="feedback-point-icon${p.startsWith('CRITICAL') ? ' critical' : p.startsWith('HIGH') ? ' high' : ''}">&#9679;</span>
+              <span>${p}</span>
+            </div>
+          `).join("")}
+        </div>
+      </div>`;
+  });
+  panel.innerHTML = html;
+}
+
+function renderChangesPanel() {
+  const v = versions[currentVersion];
+  const panel = document.getElementById("panel-changes");
+
+  if (!v.changes || v.changes.length === 0) {
+    panel.innerHTML = `
+      <div class="changes-empty">
+        <div class="changes-empty-icon">&#128221;</div>
+        <p>No changes recorded for Version ${v.version}.</p>
+      </div>`;
+    return;
+  }
+
+  const totalItems = v.changes.reduce((sum, c) => sum + c.items.length, 0);
+
+  let html = `
+    <div class="changes-summary">
+      <div class="changes-summary-title">Changes Overview</div>
+      <div class="review-summary-stats">
+        <div class="review-stat">
+          <div class="review-stat-value">${v.changes.length}</div>
+          <div class="review-stat-label">Categories</div>
+        </div>
+        <div class="review-stat">
+          <div class="review-stat-value">${totalItems}</div>
+          <div class="review-stat-label">Changes</div>
+        </div>
+        <div class="review-stat">
+          <div class="review-stat-value">${v.version > 1 ? 'V' + (v.version - 1) + ' &rarr; V' + v.version : 'N/A'}</div>
+          <div class="review-stat-label">From &rarr; To</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  v.changes.forEach(cat => {
+    html += `<div class="change-category">
+      <div class="change-category-title">${cat.category}</div>
+      ${cat.items.map(item => `<div class="change-item">${item}</div>`).join("")}
+    </div>`;
+  });
+  panel.innerHTML = html;
+}
+
+function renderDiffPanel() {
+  const v = versions[currentVersion];
+  const panel = document.getElementById("panel-diff");
+  const vNum = v.version;
+  const diff = diffData[vNum];
+
+  if (!diff) {
+    panel.innerHTML = `
+      <div class="feedback-empty">
+        <div class="feedback-empty-icon">&#128203;</div>
+        <p>No diff data for Version ${vNum}.</p>
+      </div>`;
+    return;
+  }
+
+  let html = `
+    <div class="diff-container">
+      <div class="diff-header">${diff.header}</div>
+      <div class="diff-body">
+        ${diff.lines.map(line => `<div class="diff-line ${line.type}">${escapeHtml(line.text)}</div>`).join("")}
+      </div>
+    </div>`;
+  panel.innerHTML = html;
+}
+
+function escapeHtml(text) {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ============================================================
+// RENDER: Right panel
+// ============================================================
+function renderRightPanel() {
+  const v = versions[currentVersion];
+  const container = document.getElementById("right-panel-content");
+
+  let feedbackMini = "";
+  if (v.feedback && v.feedback.length > 0) {
+    feedbackMini = v.feedback.map(fb => `
+      <div class="right-panel-feedback-mini">
+        <strong>${fb.reviewer}</strong>
+        ${fb.points[0]}${fb.points.length > 1 ? ` <span style="color:var(--text-muted)">(+${fb.points.length - 1} more)</span>` : ""}
+      </div>
+    `).join("");
+  } else {
+    feedbackMini = '<div style="font-size:12px; color:var(--text-muted)">No feedback yet.</div>';
+  }
+
+  let changesMini = "";
+  if (v.changes && v.changes.length > 0) {
+    const allItems = v.changes.flatMap(c => c.items);
+    changesMini = allItems.slice(0, 5).map(item => `<div class="right-panel-change-item">${item}</div>`).join("");
+    if (allItems.length > 5) {
+      changesMini += `<div class="right-panel-change-item" style="color:var(--text-muted); font-style:italic">+${allItems.length - 5} more changes...</div>`;
+    }
+  } else {
+    changesMini = '<div style="font-size:12px; color:var(--text-muted)">No changes recorded.</div>';
+  }
+
+  container.innerHTML = `
+    <div class="right-panel-section">
+      <div class="right-panel-section-title">Metadata</div>
+      <div class="right-panel-meta">
+        <span class="right-panel-meta-label">Version</span>
+        <span>V${v.version}</span>
+      </div>
+      <div class="right-panel-meta">
+        <span class="right-panel-meta-label">Date</span>
+        <span>${v.date}</span>
+      </div>
+      <div class="right-panel-meta">
+        <span class="right-panel-meta-label">Status</span>
+        <span class="status-badge complete"><span class="version-dot complete" style="width:6px;height:6px"></span>Complete</span>
+      </div>
+    </div>
+
+    <div class="right-panel-section">
+      <div class="right-panel-section-title">Expert Feedback</div>
+      ${feedbackMini}
+    </div>
+
+    <div class="right-panel-section">
+      <div class="right-panel-section-title">Key Changes</div>
+      ${changesMini}
+    </div>
+  `;
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function selectVersion(idx) {
+  currentVersion = idx;
+  renderAll();
+}
+
+function selectTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
+  document.querySelectorAll(".content-panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + tab));
+  updateBreadcrumb();
+  renderCurrentTab();
+  document.getElementById("content-area").scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function renderCurrentTab() {
+  switch (currentTab) {
+    case "design": renderDesignPanel(); break;
+    case "feedback": renderFeedbackPanel(); break;
+    case "changes": renderChangesPanel(); break;
+    case "diff": renderDiffPanel(); break;
+  }
+}
+
+function renderAll() {
+  renderVersionList();
+  updateProgress();
+  updateBreadcrumb();
+  updateVersionNav();
+  renderCurrentTab();
+  renderRightPanel();
+}
+
+// ============================================================
+// RENDER: Breadcrumb
+// ============================================================
+function updateBreadcrumb() {
+  const v = versions[currentVersion];
+  document.getElementById("breadcrumb-version").textContent = `V${v.version}: ${v.title}`;
+  document.getElementById("breadcrumb-tab").textContent = currentTab.charAt(0).toUpperCase() + currentTab.slice(1);
+}
+
+// ============================================================
+// RENDER: Version navigation buttons
+// ============================================================
+function updateVersionNav() {
+  document.getElementById("nav-prev").disabled = currentVersion === 0;
+  document.getElementById("nav-next").disabled = currentVersion === versions.length - 1;
+}
+
+// ============================================================
+// SEARCH
+// ============================================================
+function versionMatchesSearch(v, query) {
+  const q = query.toLowerCase();
+  if (v.title.toLowerCase().includes(q)) return true;
+  if (v.content.toLowerCase().includes(q)) return true;
+  if (v.feedback.some(fb => fb.reviewer.toLowerCase().includes(q) || fb.points.some(p => p.toLowerCase().includes(q)))) return true;
+  if (v.changes.some(c => c.category.toLowerCase().includes(q) || c.items.some(i => i.toLowerCase().includes(q)))) return true;
+  return false;
+}
+
+// ============================================================
+// EVENT LISTENERS
+// ============================================================
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => selectTab(tab.dataset.tab));
+});
+
+document.getElementById("right-panel-toggle").addEventListener("click", () => {
+  rightPanelOpen = !rightPanelOpen;
+  document.getElementById("right-panel").classList.toggle("collapsed", !rightPanelOpen);
+});
+
+document.getElementById("right-panel-close").addEventListener("click", () => {
+  rightPanelOpen = false;
+  document.getElementById("right-panel").classList.add("collapsed");
+});
+
+document.getElementById("search-input").addEventListener("input", (e) => {
+  searchQuery = e.target.value.trim();
+  renderVersionList();
+});
+
+document.getElementById("nav-prev").addEventListener("click", () => {
+  if (currentVersion > 0) selectVersion(currentVersion - 1);
+});
+
+document.getElementById("nav-next").addEventListener("click", () => {
+  if (currentVersion < versions.length - 1) selectVersion(currentVersion + 1);
+});
+
+document.getElementById("help-button").addEventListener("click", () => {
+  document.getElementById("keyboard-help").classList.add("visible");
+});
+
+document.getElementById("keyboard-help-close").addEventListener("click", () => {
+  document.getElementById("keyboard-help").classList.remove("visible");
+});
+
+document.getElementById("keyboard-help").addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) {
+    e.currentTarget.classList.remove("visible");
+  }
+});
+
+const contentArea = document.getElementById("content-area");
+const scrollTopBtn = document.getElementById("scroll-top-btn");
+
+contentArea.addEventListener("scroll", () => {
+  scrollTopBtn.classList.toggle("visible", contentArea.scrollTop > 300);
+});
+
+scrollTopBtn.addEventListener("click", () => {
+  contentArea.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT") return;
+
+  if (e.key === "ArrowUp" && currentVersion > 0) {
+    e.preventDefault();
+    selectVersion(currentVersion - 1);
+  } else if (e.key === "ArrowDown" && currentVersion < versions.length - 1) {
+    e.preventDefault();
+    selectVersion(currentVersion + 1);
+  } else if (e.key === "1") {
+    selectTab("design");
+  } else if (e.key === "2") {
+    selectTab("feedback");
+  } else if (e.key === "3") {
+    selectTab("changes");
+  } else if (e.key === "4") {
+    selectTab("diff");
+  } else if (e.key === "/") {
+    e.preventDefault();
+    document.getElementById("search-input").focus();
+  } else if (e.key === "?") {
+    document.getElementById("keyboard-help").classList.add("visible");
+  } else if (e.key === "Escape") {
+    const helpOverlay = document.getElementById("keyboard-help");
+    if (helpOverlay.classList.contains("visible")) {
+      helpOverlay.classList.remove("visible");
+    } else {
+      document.getElementById("search-input").blur();
+      searchQuery = "";
+      document.getElementById("search-input").value = "";
+      renderVersionList();
+    }
+  }
+});
+
+// ============================================================
+// INITIAL RENDER
+// ============================================================
+renderAll();
+</script>
+
+</body>
+</html>

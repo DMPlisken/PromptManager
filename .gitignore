@@ -22,3 +22,15 @@ Thumbs.db
 
 # Docker
 pgdata/
+
+# Sidecar
+services/orchestrator/.venv/
+.sidecar.pid
+logs/
+
+# Data
+data/
+
+# Playwright
+test-results/
+playwright-report/

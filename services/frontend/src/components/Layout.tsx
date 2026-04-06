@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useToast } from "./Toast";
 import type { PromptGroup } from "../types";
+import { useAllPendingApprovals, useSessionSelector } from "../stores/sessionStore";
+import ConnectionStatus from "./session/ConnectionStatus";
 
 export default function Layout({ children, onHelp }: { children: ReactNode; onHelp?: () => void }) {
   const [groups, setGroups] = useState<PromptGroup[]>([]);
@@ -18,6 +20,13 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
   const toast = useToast();
   const location = useLocation();
   const navigate = useNavigate();
+  const pendingApprovals = useAllPendingApprovals();
+  const activeSessionCount = useSessionSelector(
+    (s) => s.sessionOrder.filter((id) => {
+      const sess = s.sessions[id];
+      return sess && ["starting", "running", "waiting_approval"].includes(sess.status);
+    }).length
+  );
 
   const loadGroups = async () => {
     try {
@@ -81,6 +90,7 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
               PromptFlow
             </h1>
           </Link>
+          <ConnectionStatus />
         </div>
 
         {/* Primary: Tasks */}
@@ -199,6 +209,28 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
 
         {/* Footer */}
         <div style={{ padding: "8px 8px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 1 }}>
+          <Link
+            to="/sessions"
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "8px 12px", borderRadius: "var(--radius)",
+              background: location.pathname === "/sessions" ? "var(--accent-light)" : "transparent",
+              color: location.pathname === "/sessions" ? "var(--accent)" : "var(--text-secondary)",
+              fontSize: 14, textDecoration: "none", fontWeight: location.pathname === "/sessions" ? 600 : 400,
+            }}
+          >
+            <span>Sessions{activeSessionCount > 0 ? ` (${activeSessionCount})` : ""}</span>
+            {pendingApprovals.length > 0 && (
+              <span style={{
+                fontSize: 11, fontWeight: 700, minWidth: 18, height: 18,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "var(--status-waiting)", color: "#fff", borderRadius: 20,
+                padding: "0 5px",
+              }}>
+                {pendingApprovals.length}
+              </span>
+            )}
+          </Link>
           {navLink("/history", "History")}
           {navLink("/manual", "Manual")}
           {onHelp && (

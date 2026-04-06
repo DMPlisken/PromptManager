@@ -15,6 +15,13 @@
   --warning: #e0a030;
   --radius: 8px;
   --radius-lg: 12px;
+
+  /* Session status colors */
+  --status-running: #4caf80;
+  --status-waiting: #e0a030;
+  --status-completed: #7c5cfc;
+  --status-failed: #e05555;
+  --status-terminated: #6b6b85;
 }
 
 * {
@@ -46,6 +53,12 @@ a {
 
 a:hover {
   text-decoration: underline;
+}
+
+/* Pulse animation for tool approval */
+@keyframes pulse-border {
+  0%, 100% { border-color: var(--status-waiting); }
+  50% { border-color: rgba(224, 160, 48, 0.3); }
 }
 
 /* Scrollbar */

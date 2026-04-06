@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-promptmgr}
       POSTGRES_DB: ${POSTGRES_DB:-promptmanager}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -15,6 +15,13 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - backend-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   backend:
     build:
@@ -24,6 +31,14 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-promptmgr}:${POSTGRES_PASSWORD:-promptmgr}@db:5432/${POSTGRES_DB:-promptmanager}
       DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-promptmgr}:${POSTGRES_PASSWORD:-promptmgr}@db:5432/${POSTGRES_DB:-promptmanager}
+      ORCHESTRATOR_URL: http://host.docker.internal:${SIDECAR_PORT:-9100}
+      SIDECAR_SECRET: ${SIDECAR_SECRET:-}
+      WORKSPACE_ROOT: ${WORKSPACE_ROOT:-}
+      MAX_CONCURRENT_SESSIONS: ${MAX_CONCURRENT_SESSIONS:-5}
+      SESSION_TIMEOUT_MINUTES: ${SESSION_TIMEOUT_MINUTES:-30}
+      CLAUDE_DEFAULT_MODEL: ${CLAUDE_DEFAULT_MODEL:-sonnet}
+      APP_SECRET: ${APP_SECRET:-}
+      CORS_ALLOWED_ORIGIN: http://localhost:${FRONTEND_PORT:-3000}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:
@@ -32,6 +47,16 @@ services:
     volumes:
       - ./services/backend/app:/app/app
       - image_uploads:/app/uploads
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - frontend-net
+      - backend-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   frontend:
     build:
@@ -42,6 +67,20 @@ services:
       - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
       - backend
+    volumes:
+      - ./services/frontend/src:/app/src
+      - ./services/frontend/public:/app/public
+    networks:
+      - frontend-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  frontend-net:
+  backend-net:
 
 volumes:
   pgdata:

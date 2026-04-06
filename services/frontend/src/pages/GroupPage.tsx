@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { copyToClipboard } from "../utils/clipboard";
@@ -6,6 +6,9 @@ import { useToast } from "../components/Toast";
 import HelpButton from "../components/HelpButton";
 import Button from "../components/ui/Button";
 import type { PromptGroup, Variable, PromptTemplate } from "../types";
+import { useWsContext } from "../providers/WebSocketContext";
+import SessionCreateModal from "../components/session/SessionCreateModal";
+import type { SessionCreateRequest } from "../types/session";
 
 const btnStyle = (variant: "primary" | "secondary" | "danger" = "primary"): React.CSSProperties => ({
   padding: "6px 14px",
@@ -263,6 +266,10 @@ export default function GroupPage({ onHelp }: { onHelp?: (id: string) => void })
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportSelection, setExportSelection] = useState<Set<number>>(new Set());
 
+  // Send to Claude
+  const [showClaudeModal, setShowClaudeModal] = useState(false);
+  const { actions } = useWsContext();
+
   const load = async () => {
     try {
       const [g, v, t] = await Promise.all([
@@ -366,6 +373,19 @@ export default function GroupPage({ onHelp }: { onHelp?: (id: string) => void })
     await load();
     toast.success("Template deleted");
   };
+
+  const handleSendToClaude = useCallback(
+    async (request: SessionCreateRequest) => {
+      try {
+        await actions.createSession(request);
+        setShowClaudeModal(false);
+        navigate("/sessions");
+      } catch (e) {
+        alert("Failed to create session: " + e);
+      }
+    },
+    [actions, navigate]
+  );
 
   if (!group) return <p style={{ color: "var(--text-muted)" }}>Loading...</p>;
 
@@ -563,6 +583,9 @@ export default function GroupPage({ onHelp }: { onHelp?: (id: string) => void })
                   <button onClick={handleCopy} style={btnStyle("primary")}>
                     {copied ? "Copied!" : "Copy to Clipboard"}
                   </button>
+                  <button onClick={() => setShowClaudeModal(true)} style={btnStyle("secondary")}>
+                    Send to Claude
+                  </button>
                 </div>
 
                 {/* Save Execution */}
@@ -645,6 +668,15 @@ export default function GroupPage({ onHelp }: { onHelp?: (id: string) => void })
             </div>
           </div>
         </>
+      )}
+
+      {/* Send to Claude modal */}
+      {showClaudeModal && (
+        <SessionCreateModal
+          initialPrompt={rendered}
+          onConfirm={handleSendToClaude}
+          onCancel={() => setShowClaudeModal(false)}
+        />
       )}
     </div>
   );
