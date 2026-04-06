@@ -184,6 +184,21 @@
 - [x] Frontend: ErrorBoundary component wrapping main content area in Layout
 - [x] Frontend: Sessions page empty state with "Create your first session" CTA
 
+### Completed (UX Polish Pass)
+- [x] Frontend: Sessions page — improved "no session selected" empty state with icon, description, and CTA button
+- [x] Frontend: Sessions page — tab bar visual distinction with bottom accent border on active tab and transitions
+- [x] Frontend: Sessions page — sidebar session cards redesigned with card backgrounds, status badges, proper spacing
+- [x] Frontend: MachineCard — platform badges use emoji icons (apple, penguin, window) instead of text labels
+- [x] Frontend: MachineCard — disk space metric added (disk_free_gb from health data)
+- [x] Frontend: MachineCard — memory shown in human-readable format (e.g., "15.2 / 16.0 GB")
+- [x] Frontend: MachineCard — subtle gradient background using machine color accent
+- [x] Frontend: MachineCard — hover elevation with box-shadow transition
+- [x] Frontend: ConnectionStatus — less alarming when WS offline but machines online (shows "WS offline" with pulse instead of red "Disconnected")
+- [x] Frontend: ConnectionStatus — pulsing dot animation on reconnecting/connecting states
+- [x] Frontend: Sidebar Tasks link — visually distinct as primary nav item with border and background tint
+- [x] Frontend: Sidebar — hover effects on all nav items (Sessions, Machines, History, Manual, Quick Help)
+- [x] Frontend: CSS — added status color utility classes for consistent opacity backgrounds
+
 ### Pending (Future Enhancements)
 - [ ] Frontend: Markdown rendering for assistant messages
 - [ ] Frontend: Code block syntax highlighting

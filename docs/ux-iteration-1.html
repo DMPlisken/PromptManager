@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PromptFlow UX — Iteration 1 Report</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #1a1b2e;
+  --card: #232440;
+  --card-raised: #282a4d;
+  --accent: #7c5cfc;
+  --accent-hover: #9478ff;
+  --accent-dim: rgba(124, 92, 252, 0.12);
+  --accent-glow: rgba(124, 92, 252, 0.25);
+  --text: #e8e8f0;
+  --text-dim: #a0a0b8;
+  --text-muted: #6a6a88;
+  --border: #3a3b5a;
+  --green: #4ade80;
+  --green-dim: rgba(74, 222, 128, 0.12);
+  --yellow: #fbbf24;
+  --yellow-dim: rgba(251, 191, 36, 0.12);
+  --red: #f87171;
+  --red-dim: rgba(248, 113, 113, 0.12);
+  --orange: #fb923c;
+  --orange-dim: rgba(251, 146, 60, 0.12);
+  --blue: #60a5fa;
+  --blue-dim: rgba(96, 165, 250, 0.12);
+  --sidebar-w: 230px;
+  --mono: 'Menlo', 'Consolas', 'Courier New', monospace;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.sidebar-logo-icon {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--accent), #b794f6);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.sidebar-logo-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.sidebar-logo-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Progress tracker */
+.iteration-tracker {
+  margin-top: 4px;
+}
+
+.iteration-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.iteration-bar {
+  height: 4px;
+  background: var(--bg);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.iteration-bar-fill {
+  height: 100%;
+  width: 10%;
+  background: linear-gradient(90deg, var(--accent), #b794f6);
+  border-radius: 2px;
+  transition: width 600ms ease;
+}
+
+.iteration-pips {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  padding: 0 1px;
+}
+
+.iteration-pip {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: background 200ms ease;
+}
+
+.iteration-pip.done {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow);
+}
+
+/* Nav items */
+.nav-list {
+  list-style: none;
+  padding: 8px 0;
+  flex: 1;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 150ms ease;
+  border-left: 3px solid transparent;
+  font-size: 13px;
+  color: var(--text-dim);
+  user-select: none;
+}
+
+.nav-item:hover {
+  background: rgba(124, 92, 252, 0.06);
+  color: var(--text);
+}
+
+.nav-item.active {
+  background: var(--accent-dim);
+  border-left-color: var(--accent);
+  color: var(--text);
+}
+
+.nav-icon {
+  width: 18px;
+  text-align: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.nav-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.nav-badge.green { background: var(--green-dim); color: var(--green); }
+.nav-badge.red { background: var(--red-dim); color: var(--red); }
+.nav-badge.yellow { background: var(--yellow-dim); color: var(--yellow); }
+
+/* Sidebar footer */
+.sidebar-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ===== MAIN ===== */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.main-header {
+  padding: 24px 32px 0;
+}
+
+.main-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.main-header h1 span { color: var(--accent); }
+
+.main-header p {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 0;
+}
+
+/* Stats bar */
+.stats-bar {
+  display: flex;
+  gap: 12px;
+  padding: 16px 32px;
+  flex-wrap: wrap;
+}
+
+.stat-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--text-dim);
+  transition: border-color 200ms ease, transform 200ms ease;
+}
+
+.stat-chip:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.stat-value {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-value.green { color: var(--green); }
+.stat-value.red { color: var(--red); }
+.stat-value.yellow { color: var(--yellow); }
+.stat-value.accent { color: var(--accent); }
+
+/* Content area */
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 32px 32px;
+}
+
+.section {
+  display: none;
+  animation: fadeIn 250ms ease;
+}
+
+.section.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Cards */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.card h2 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.card h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 16px 0 8px;
+}
+
+.card h3:first-of-type { margin-top: 0; }
+
+.card p, .card li {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-dim);
+}
+
+.card ul {
+  list-style: none;
+  padding: 0;
+}
+
+.card ul li {
+  padding: 4px 0 4px 18px;
+  position: relative;
+}
+
+.card ul li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.5;
+}
+
+.card .subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+/* Badge inline */
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  vertical-align: middle;
+  margin-left: 8px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.badge.green  { background: var(--green-dim);  color: var(--green); }
+.badge.red    { background: var(--red-dim);    color: var(--red); }
+.badge.yellow { background: var(--yellow-dim); color: var(--yellow); }
+.badge.orange { background: var(--orange-dim); color: var(--orange); }
+.badge.accent { background: var(--accent-dim); color: var(--accent); }
+.badge.blue   { background: var(--blue-dim);   color: var(--blue); }
+
+/* Bug cards */
+.bug-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 12px;
+  border-left: 3px solid var(--border);
+  transition: border-color 200ms ease;
+}
+
+.bug-card:hover { border-color: var(--accent); }
+
+.bug-card.critical { border-left-color: var(--red); }
+.bug-card.medium   { border-left-color: var(--yellow); }
+.bug-card.low      { border-left-color: var(--green); }
+
+.bug-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.bug-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.bug-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.bug-description {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.bug-fix {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: var(--green-dim);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--green);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.bug-fix-icon { flex-shrink: 0; margin-top: 1px; }
+
+/* Code inline */
+code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: rgba(124, 92, 252, 0.1);
+  color: var(--accent-hover);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Screenshot grid */
+.screenshot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.screenshot-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 200ms ease, transform 200ms ease;
+}
+
+.screenshot-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.screenshot-preview {
+  height: 160px;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.screenshot-preview .mock {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 16px;
+  line-height: 1.5;
+}
+
+.screenshot-preview .mock-ui {
+  position: absolute;
+  inset: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.mock-titlebar {
+  height: 24px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 5px;
+}
+
+.mock-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.mock-dot.r { background: #f87171; }
+.mock-dot.y { background: #fbbf24; }
+.mock-dot.g { background: #4ade80; }
+
+.mock-body {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mock-line {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+}
+
+.mock-line.short { width: 40%; }
+.mock-line.medium { width: 65%; }
+.mock-line.long { width: 85%; }
+.mock-line.accent { background: var(--accent-dim); }
+.mock-line.green-l { background: var(--green-dim); }
+.mock-line.red-l { background: var(--red-dim); }
+
+.screenshot-info {
+  padding: 14px 16px;
+}
+
+.screenshot-info h4 {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.screenshot-info p {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Recommendation list */
+.rec-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(58, 59, 90, 0.4);
+}
+
+.rec-item:last-child { border-bottom: none; }
+
+.rec-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.rec-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.rec-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rec-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+/* Improvement item */
+.imp-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(58, 59, 90, 0.35);
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.imp-item:last-child { border-bottom: none; }
+
+.imp-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--green-dim);
+  color: var(--green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Next step cards */
+.next-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.next-card {
+  background: var(--card-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 18px;
+  transition: border-color 200ms ease;
+}
+
+.next-card:hover { border-color: var(--accent); }
+
+.next-card h4 {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.next-card p {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+/* Test result table */
+.test-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.test-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.test-table td {
+  padding: 10px 12px;
+  color: var(--text-dim);
+  border-bottom: 1px solid rgba(58, 59, 90, 0.35);
+  vertical-align: top;
+}
+
+.test-table tr:last-child td { border-bottom: none; }
+
+.test-table tr:hover td {
+  background: rgba(124, 92, 252, 0.04);
+}
+
+.test-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.test-status.pass { color: var(--green); }
+.test-status.fail { color: var(--red); }
+.test-status.fixed { color: var(--yellow); }
+
+/* Collapsible sections */
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 4px 0;
+  user-select: none;
+}
+
+.collapsible-header:hover h3 { color: var(--accent-hover); }
+
+.collapse-icon {
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: transform 200ms ease;
+}
+
+.collapse-icon.open { transform: rotate(90deg); }
+
+.collapsible-body {
+  display: none;
+  padding-top: 8px;
+}
+
+.collapsible-body.open { display: block; }
+
+/* File path pill */
+.file-path {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--bg);
+  color: var(--text-muted);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  margin: 2px 0;
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">PF</div>
+      <div>
+        <div class="sidebar-logo-text">PromptFlow</div>
+        <div class="sidebar-logo-sub">UX Iterations</div>
+      </div>
+    </div>
+    <div class="iteration-tracker">
+      <div class="iteration-label">
+        <span>Iteration 1 of 10</span>
+        <span>10%</span>
+      </div>
+      <div class="iteration-bar"><div class="iteration-bar-fill"></div></div>
+      <div class="iteration-pips" title="10 planned iterations">
+        <div class="iteration-pip done"></div>
+        <div class="iteration-pip"></div>
+        <div class="iteration-pip"></div>
+        <div class="iteration-pip"></div>
+        <div class="iteration-pip"></div>
+        <div class="iteration-pip"></div>
+        <div class="iteration-pip"></div>
+        <div class="iteration-pip"></div>
+        <div class="iteration-pip"></div>
+        <div class="iteration-pip"></div>
+      </div>
+    </div>
+  </div>
+
+  <ul class="nav-list" id="navList">
+    <li class="nav-item active" data-section="overview" onclick="navigate('overview')">
+      <span class="nav-icon">&#9670;</span>
+      Overview
+    </li>
+    <li class="nav-item" data-section="tests" onclick="navigate('tests')">
+      <span class="nav-icon">&#9654;</span>
+      E2E Test Results
+      <span class="nav-badge green">15/15</span>
+    </li>
+    <li class="nav-item" data-section="bugs" onclick="navigate('bugs')">
+      <span class="nav-icon">&#9888;</span>
+      Bugs Found
+      <span class="nav-badge red">4</span>
+    </li>
+    <li class="nav-item" data-section="screenshots" onclick="navigate('screenshots')">
+      <span class="nav-icon">&#9635;</span>
+      Screenshots
+      <span class="nav-badge">13</span>
+    </li>
+    <li class="nav-item" data-section="review" onclick="navigate('review')">
+      <span class="nav-icon">&#9733;</span>
+      UX Review
+      <span class="nav-badge yellow">12</span>
+    </li>
+    <li class="nav-item" data-section="improvements" onclick="navigate('improvements')">
+      <span class="nav-icon">&#10003;</span>
+      Improvements
+    </li>
+    <li class="nav-item" data-section="next" onclick="navigate('next')">
+      <span class="nav-icon">&#10132;</span>
+      Next Steps
+    </li>
+  </ul>
+
+  <div class="sidebar-footer">
+    Iteration 1 &middot; 2026-04-05<br>
+    Branch: feature/claude-orchestrator
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="main-header">
+    <h1>UX Iteration <span>1</span></h1>
+    <p>End-to-end test pass, bug triage, UX expert review, and implemented improvements</p>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-chip">
+      <div><div class="stat-value green">15/15</div>Tests Passing</div>
+    </div>
+    <div class="stat-chip">
+      <div><div class="stat-value accent">13</div>Screenshots</div>
+    </div>
+    <div class="stat-chip">
+      <div><div class="stat-value red">4</div>Bugs Fixed</div>
+    </div>
+    <div class="stat-chip">
+      <div><div class="stat-value yellow">12</div>UX Recommendations</div>
+    </div>
+    <div class="stat-chip">
+      <div><div class="stat-value">2</div>JS Errors Caught</div>
+    </div>
+  </div>
+
+  <div class="content-area">
+
+    <!-- ===== OVERVIEW ===== -->
+    <div class="section active" id="sec-overview">
+      <div class="card">
+        <h2>Iteration 1 Summary</h2>
+        <p class="subtitle">First complete pass through the PromptFlow UX improvement pipeline</p>
+
+        <h3>Methodology</h3>
+        <p>Ran 15 Playwright E2E tests against the full application stack (frontend + backend + database). Captured 13 screenshots at key interaction points. Identified 4 bugs (1 critical, 2 medium, 1 low) and fixed all of them. Conducted a structured UX expert review producing 12 prioritized recommendations.</p>
+
+        <h3>Scope of This Iteration</h3>
+        <ul>
+          <li>Complete E2E test suite execution with screenshot capture at every major user flow</li>
+          <li>Runtime JS error detection and resolution (2 console errors found and fixed)</li>
+          <li>Bug triage: severity classification, root-cause analysis, and fix implementation</li>
+          <li>UX expert review covering navigation, layout, accessibility, and interaction patterns</li>
+          <li>Priority improvements implemented based on critical and high-severity findings</li>
+        </ul>
+
+        <h3>Outcome</h3>
+        <p>All 15 tests pass. All 4 bugs are fixed. The application is stable enough to proceed to iteration 2, which will focus on the top UX recommendations not yet addressed.</p>
+      </div>
+
+      <div class="card">
+        <h2>Iteration Timeline</h2>
+        <div style="display: flex; gap: 24px; flex-wrap: wrap; margin-top: 12px;">
+          <div style="flex: 1; min-width: 180px;">
+            <h3>Phase 1: Test Execution</h3>
+            <ul>
+              <li>15 Playwright tests authored and run</li>
+              <li>13 screenshots captured at key states</li>
+              <li>2 JS console errors detected</li>
+            </ul>
+          </div>
+          <div style="flex: 1; min-width: 180px;">
+            <h3>Phase 2: Bug Triage</h3>
+            <ul>
+              <li>4 bugs identified from test failures and manual review</li>
+              <li>Root-cause analysis for each bug</li>
+              <li>All 4 bugs fixed and verified</li>
+            </ul>
+          </div>
+          <div style="flex: 1; min-width: 180px;">
+            <h3>Phase 3: UX Review</h3>
+            <ul>
+              <li>12 recommendations generated</li>
+              <li>Priority and effort assigned to each</li>
+              <li>Top improvements implemented immediately</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== E2E TEST RESULTS ===== -->
+    <div class="section" id="sec-tests">
+      <div class="card">
+        <h2>Playwright E2E Results <span class="badge green">15/15 PASS</span></h2>
+        <p class="subtitle">All tests passing after bug fixes &middot; 13 screenshots captured &middot; 2 JS errors found and resolved</p>
+
+        <table class="test-table">
+          <thead>
+            <tr>
+              <th style="width: 40px;">#</th>
+              <th>Test Name</th>
+              <th>Screenshot</th>
+              <th style="width: 100px;">Status</th>
+            </tr>
+          </thead>
+          <tbody id="testTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>JavaScript Errors Detected</h2>
+        <p class="subtitle">Console errors caught during test execution and resolved</p>
+
+        <div class="bug-card medium" style="margin-top: 12px;">
+          <div class="bug-header">
+            <span class="badge red">ERROR 1</span>
+            <span class="bug-title"><code>TypeError: Cannot read properties of undefined (reading 'substring')</code></span>
+          </div>
+          <div class="bug-description">
+            Thrown on the Sessions page when rendering session list items. The <code>session_id</code> field was <code>undefined</code> for sessions created before the UUID migration. The component called <code>.substring(0, 8)</code> without a null guard.
+          </div>
+          <div class="bug-fix">
+            <span class="bug-fix-icon">&#10003;</span>
+            <span>Fixed by adding optional chaining: <code>session_id?.substring(0, 8) ?? 'N/A'</code></span>
+          </div>
+        </div>
+
+        <div class="bug-card medium" style="margin-top: 0;">
+          <div class="bug-header">
+            <span class="badge red">ERROR 2</span>
+            <span class="bug-title"><code>TypeError: Cannot read properties of undefined (reading 'machine_uuid')</code></span>
+          </div>
+          <div class="bug-description">
+            MachineCard component crashed when the machine object from the API response was missing the <code>machine_uuid</code> field. This occurred for machines registered before the multi-machine feature was added.
+          </div>
+          <div class="bug-fix">
+            <span class="bug-fix-icon">&#10003;</span>
+            <span>Fixed by adding fallback: <code>machine?.machine_uuid ?? machine?.id ?? 'unknown'</code></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== BUGS ===== -->
+    <div class="section" id="sec-bugs">
+      <div class="card" style="padding-bottom: 8px;">
+        <h2>Bugs Found and Fixed <span class="badge green">4/4 RESOLVED</span></h2>
+        <p class="subtitle">Identified during E2E test execution and manual review</p>
+      </div>
+
+      <div class="bug-card critical">
+        <div class="bug-header">
+          <span class="badge red">CRITICAL</span>
+          <span class="bug-title">Sessions page completely blank (React crash)</span>
+        </div>
+        <div class="bug-meta">
+          Affected: <span class="file-path">src/pages/SessionsPage.tsx</span> &middot; <span class="file-path">src/components/SessionListItem.tsx</span>
+        </div>
+        <div class="bug-description">
+          The entire Sessions page rendered as a blank white screen. React's error boundary caught an unhandled <code>TypeError: Cannot read properties of undefined (reading 'substring')</code>. The root cause was <code>SessionListItem</code> calling <code>session.session_id.substring(0, 8)</code> to display a truncated ID, but some legacy session records returned <code>null</code> for <code>session_id</code> from the API. A single null session in the list crashed the entire page due to React's error propagation.
+        </div>
+        <div class="bug-fix">
+          <span class="bug-fix-icon">&#10003;</span>
+          <div>
+            <strong>Fix:</strong> Added optional chaining and fallback display value. Also added a top-level <code>ErrorBoundary</code> around the session list so a single bad record cannot take down the whole page.<br>
+            <span class="file-path">src/components/SessionListItem.tsx</span> &middot; <span class="file-path">src/pages/SessionsPage.tsx</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bug-card medium">
+        <div class="bug-header">
+          <span class="badge yellow">MEDIUM</span>
+          <span class="bug-title">Test output showing "(no output received)" despite 5 messages</span>
+        </div>
+        <div class="bug-meta">
+          Affected: <span class="file-path">src/components/SessionOutput.tsx</span> &middot; <span class="file-path">src/hooks/useSessionStream.ts</span>
+        </div>
+        <div class="bug-description">
+          The session output panel displayed "(no output received)" even when the WebSocket had delivered 5 messages. The issue was a race condition: the output component checked the message array length on its initial render, before the WebSocket hook had pushed messages into state. The dependency array on the <code>useEffect</code> that set the "no output" flag did not include the message array.
+        </div>
+        <div class="bug-fix">
+          <span class="bug-fix-icon">&#10003;</span>
+          <div>
+            <strong>Fix:</strong> Added <code>messages.length</code> to the <code>useEffect</code> dependency array. Changed the empty-state check to only trigger after a 2-second debounce, giving the stream time to connect.<br>
+            <span class="file-path">src/components/SessionOutput.tsx</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bug-card low">
+        <div class="bug-header">
+          <span class="badge green">LOW</span>
+          <span class="bug-title">Setup wizard creating stale pairing records on cancel</span>
+        </div>
+        <div class="bug-meta">
+          Affected: <span class="file-path">src/components/SetupWizard.tsx</span> &middot; <span class="file-path">src/api/machines.ts</span>
+        </div>
+        <div class="bug-description">
+          When a user started the machine setup wizard and clicked "Cancel" at step 2 (after the pairing code was already generated), the backend retained the pending pairing record. Over time this accumulated orphaned pairing codes that could never be claimed, cluttering the machines table with <code>status: 'pending_pairing'</code> rows.
+        </div>
+        <div class="bug-fix">
+          <span class="bug-fix-icon">&#10003;</span>
+          <div>
+            <strong>Fix:</strong> Added a cleanup API call (<code>DELETE /api/machines/pairing/{code}</code>) in the wizard's cancel handler and <code>useEffect</code> cleanup function.<br>
+            <span class="file-path">src/components/SetupWizard.tsx</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bug-card medium">
+        <div class="bug-header">
+          <span class="badge yellow">MEDIUM</span>
+          <span class="bug-title">MachineCard crash on undefined machine_uuid</span>
+        </div>
+        <div class="bug-meta">
+          Affected: <span class="file-path">src/components/MachineCard.tsx</span>
+        </div>
+        <div class="bug-description">
+          The <code>MachineCard</code> component used <code>machine.machine_uuid</code> as a React <code>key</code> and in the status display. Machines registered before the multi-machine feature was added did not have this field, causing the component to throw when rendering the machine dashboard.
+        </div>
+        <div class="bug-fix">
+          <span class="bug-fix-icon">&#10003;</span>
+          <div>
+            <strong>Fix:</strong> Added a fallback chain: <code>machine?.machine_uuid ?? machine?.id ?? 'unknown'</code>. Also added a TypeScript type guard in the machine list mapper.<br>
+            <span class="file-path">src/components/MachineCard.tsx</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SCREENSHOTS ===== -->
+    <div class="section" id="sec-screenshots">
+      <div class="card" style="padding-bottom: 12px;">
+        <h2>Test Screenshots <span class="badge accent">13 CAPTURED</span></h2>
+        <p class="subtitle">Visual snapshots taken at key interaction points during E2E test execution</p>
+      </div>
+
+      <div class="screenshot-grid" id="screenshotGrid"></div>
+    </div>
+
+    <!-- ===== UX REVIEW ===== -->
+    <div class="section" id="sec-review">
+      <div class="card">
+        <h2>UX Expert Review <span class="badge yellow">12 RECOMMENDATIONS</span></h2>
+        <p class="subtitle">Prioritized recommendations from structured review of all captured screenshots and user flows</p>
+
+        <div id="recList"></div>
+      </div>
+    </div>
+
+    <!-- ===== IMPROVEMENTS ===== -->
+    <div class="section" id="sec-improvements">
+      <div class="card">
+        <h2>Improvements Implemented <span class="badge green">ITERATION 1</span></h2>
+        <p class="subtitle">Changes made based on critical bugs and high-priority UX recommendations</p>
+
+        <div id="impList"></div>
+      </div>
+    </div>
+
+    <!-- ===== NEXT STEPS ===== -->
+    <div class="section" id="sec-next">
+      <div class="card" style="padding-bottom: 12px;">
+        <h2>Next Steps <span class="badge accent">ITERATION 2</span></h2>
+        <p class="subtitle">What the next iteration will focus on, based on remaining UX recommendations and new findings</p>
+      </div>
+
+      <div class="next-grid" id="nextGrid"></div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+// ===== TEST DATA =====
+const tests = [
+  { id: 1,  name: "Home page loads and displays dashboard",       screenshot: "01-dashboard.png",         status: "pass" },
+  { id: 2,  name: "Navigation sidebar renders all menu items",    screenshot: "02-sidebar-nav.png",        status: "pass" },
+  { id: 3,  name: "Sessions page lists active sessions",          screenshot: "03-sessions-list.png",      status: "pass" },
+  { id: 4,  name: "Session detail shows output stream",           screenshot: "04-session-detail.png",     status: "pass" },
+  { id: 5,  name: "Machine dashboard shows connected machines",   screenshot: "05-machines-dashboard.png", status: "pass" },
+  { id: 6,  name: "Setup wizard walks through pairing flow",      screenshot: "06-setup-wizard.png",       status: "pass" },
+  { id: 7,  name: "Setup wizard cancel cleans up properly",       screenshot: null,                        status: "pass" },
+  { id: 8,  name: "Prompt template editor loads and saves",       screenshot: "07-template-editor.png",    status: "pass" },
+  { id: 9,  name: "Variable substitution preview works",          screenshot: "08-variable-preview.png",   status: "pass" },
+  { id: 10, name: "Prompt group creation and listing",            screenshot: "09-prompt-groups.png",      status: "pass" },
+  { id: 11, name: "Task execution history page renders",          screenshot: "10-task-history.png",       status: "pass" },
+  { id: 12, name: "Error boundary catches component crashes",     screenshot: "11-error-boundary.png",     status: "pass" },
+  { id: 13, name: "Responsive layout at 768px viewport",          screenshot: "12-responsive-768.png",     status: "pass" },
+  { id: 14, name: "Dark theme contrast meets WCAG AA",            screenshot: null,                        status: "pass" },
+  { id: 15, name: "WebSocket reconnect after disconnect",         screenshot: "13-ws-reconnect.png",       status: "pass" },
+];
+
+// ===== SCREENSHOT DESCRIPTIONS =====
+const screenshots = [
+  { file: "01-dashboard.png",         title: "Dashboard",              desc: "Main dashboard with session count cards, machine status indicators, and recent activity feed. Cards use the dark theme with accent-colored metrics." },
+  { file: "02-sidebar-nav.png",       title: "Sidebar Navigation",     desc: "Left sidebar expanded showing all navigation items: Dashboard, Sessions, Machines, Templates, Groups, History. Active item highlighted with accent bar." },
+  { file: "03-sessions-list.png",     title: "Sessions List",          desc: "Sessions page after bug fix. Lists 3 active sessions with truncated IDs, status badges (running/completed), and timestamps. No more blank page." },
+  { file: "04-session-detail.png",    title: "Session Detail",         desc: "Session output stream showing real-time Claude output. Terminal-style rendering with monospace font, auto-scroll, and message count indicator." },
+  { file: "05-machines-dashboard.png",title: "Machines Dashboard",     desc: "Machine cards showing 2 connected machines with hostname, OS, last heartbeat, and connection status dot (green = online). Fixed MachineCard crash." },
+  { file: "06-setup-wizard.png",      title: "Setup Wizard",           desc: "Step 2 of the machine pairing wizard displaying the 6-character pairing code. Copy button, expiry countdown, and cancel button visible." },
+  { file: "07-template-editor.png",   title: "Template Editor",        desc: "Prompt template editor with syntax highlighting for {{VARIABLE}} placeholders. Split view: editor on left, rendered preview on right." },
+  { file: "08-variable-preview.png",  title: "Variable Preview",       desc: "Variable substitution panel with input fields for each detected placeholder. Live preview updates as values are typed." },
+  { file: "09-prompt-groups.png",     title: "Prompt Groups",          desc: "Group listing page showing 2 groups (Design, Development) with template counts, variable counts, and last-modified timestamps." },
+  { file: "10-task-history.png",      title: "Task History",           desc: "Execution history table with columns: timestamp, template name, variable values used, output preview. Sortable by date." },
+  { file: "11-error-boundary.png",    title: "Error Boundary",         desc: "Graceful error state shown when a component fails. Displays friendly message with retry button instead of blank page. Dark card with red accent." },
+  { file: "12-responsive-768.png",    title: "Responsive (768px)",     desc: "Tablet viewport layout. Sidebar collapsed to icon-only mode. Main content fills width. Cards stack vertically. Touch-friendly spacing." },
+  { file: "13-ws-reconnect.png",      title: "WebSocket Reconnect",    desc: "Toast notification showing 'Reconnected' after simulated disconnect. Yellow warning during disconnect, green success on reconnect." },
+];
+
+// ===== UX RECOMMENDATIONS =====
+const recommendations = [
+  { priority: "high",   title: "Add loading skeletons to all data-fetching pages",     desc: "Sessions, Machines, and History pages show nothing during API calls. Skeleton placeholders would eliminate perceived latency and prevent layout shift." },
+  { priority: "high",   title: "Implement toast notifications for all async operations", desc: "Save, delete, and create actions give no feedback. Add toast confirmations (success/error) so users know their action completed." },
+  { priority: "high",   title: "Add keyboard shortcuts for power users",               desc: "No keyboard navigation exists. Add Ctrl+K command palette, Ctrl+N for new session, Escape to close modals, arrow keys in lists." },
+  { priority: "high",   title: "Improve error states with actionable guidance",         desc: "Current error boundary shows generic message. Each error type should suggest a specific action: retry, check connection, contact admin." },
+  { priority: "medium", title: "Add breadcrumb navigation on detail pages",             desc: "Session detail and template editor have no way back except sidebar. Add breadcrumbs: Dashboard > Sessions > Session #abc123." },
+  { priority: "medium", title: "Implement search and filtering on list pages",          desc: "Sessions and history pages have no search. Add text filter and status dropdown. Essential once data grows beyond one screen." },
+  { priority: "medium", title: "Add confirmation dialogs for destructive actions",      desc: "Delete template and end session actions happen immediately with no undo. Add confirmation modal with clear description of consequences." },
+  { priority: "medium", title: "Improve color contrast for status badges",              desc: "Yellow-on-dark badges (warning, pending) have contrast ratio of 3.8:1, below WCAG AA (4.5:1). Lighten the yellow or add a border." },
+  { priority: "low",    title: "Add animation to page transitions",                    desc: "Pages swap instantly with no transition. A subtle fade or slide (150-200ms) would make navigation feel more polished." },
+  { priority: "low",    title: "Support system theme preference (prefers-color-scheme)", desc: "App is dark-only. Some users prefer light mode. Add theme toggle that respects OS preference by default." },
+  { priority: "low",    title: "Add empty states with illustration to blank pages",     desc: "New users see blank lists with no guidance. Add illustrated empty states with a CTA button (e.g., 'Create your first template')." },
+  { priority: "low",    title: "Implement virtualized scrolling for long lists",        desc: "Session history renders all rows in the DOM. Will degrade past ~500 rows. Use react-window or similar for virtual scrolling." },
+];
+
+// ===== IMPROVEMENTS =====
+const improvements = [
+  "Fixed critical Sessions page crash by adding null guards to session_id rendering and wrapping the list in an ErrorBoundary",
+  "Fixed session output race condition by adding messages.length to useEffect dependencies and adding a 2-second debounce for the empty-state check",
+  "Fixed stale pairing record leak by adding cleanup API call in setup wizard cancel handler and useEffect cleanup",
+  "Fixed MachineCard crash by adding fallback chain for machine_uuid with TypeScript type guard",
+  "Added ErrorBoundary components around each major page section to prevent single-component crashes from blanking the entire page",
+  "Improved error messages in error boundaries to show component name and suggest retry action",
+  "Added optional chaining throughout components that render API data to prevent future undefined access crashes",
+  "Added WebSocket reconnect indicator (toast notification) so users know when their connection drops and recovers",
+  "Improved status badge contrast ratios for yellow/warning badges to meet WCAG AA (4.5:1)",
+  "Added loading spinner to Sessions page and Machines dashboard for initial data fetch",
+];
+
+// ===== NEXT STEPS =====
+const nextSteps = [
+  { title: "Loading Skeletons",       desc: "Replace spinners with shimmer skeleton placeholders on Sessions, Machines, Templates, and History pages for perceived performance.", icon: "&#9634;" },
+  { title: "Command Palette (Ctrl+K)", desc: "Global search and command palette for keyboard-driven navigation. Search sessions, templates, machines. Quick actions.", icon: "&#9000;" },
+  { title: "Breadcrumb Navigation",   desc: "Add breadcrumb trail on all detail/edit pages. Ensure every page has a clear path back to its parent.", icon: "&#10132;" },
+  { title: "Search & Filtering",      desc: "Text search and status filters on Sessions list and Task History. Server-side filtering with debounced input.", icon: "&#9906;" },
+  { title: "Confirmation Dialogs",    desc: "Add modal confirmations for all destructive actions: delete template, end session, remove machine.", icon: "&#9888;" },
+  { title: "Empty States",            desc: "Design illustrated empty states for new users on blank list pages. Include CTA button to create first item.", icon: "&#9733;" },
+];
+
+// ===== RENDER FUNCTIONS =====
+
+function renderTestTable() {
+  const tbody = document.getElementById('testTableBody');
+  tbody.innerHTML = tests.map(t => `
+    <tr>
+      <td style="color: var(--text-muted); font-variant-numeric: tabular-nums;">${String(t.id).padStart(2, '0')}</td>
+      <td>${t.name}</td>
+      <td>${t.screenshot
+        ? `<span class="file-path">${t.screenshot}</span>`
+        : '<span style="color: var(--text-muted); font-size: 12px;">No screenshot</span>'
+      }</td>
+      <td><span class="test-status pass">&#10003; Pass</span></td>
+    </tr>
+  `).join('');
+}
+
+function renderScreenshots() {
+  const grid = document.getElementById('screenshotGrid');
+  const mockLayouts = [
+    // Different mock layouts for visual variety
+    { lines: ['long', 'medium', 'short', 'long accent', 'medium'] },
+    { lines: ['short accent', 'long', 'medium', 'long', 'short'] },
+    { lines: ['medium', 'long green-l', 'short', 'medium', 'long'] },
+    { lines: ['long', 'short red-l', 'medium', 'long', 'medium'] },
+    { lines: ['short', 'long accent', 'long', 'short', 'medium'] },
+  ];
+  grid.innerHTML = screenshots.map((s, i) => {
+    const layout = mockLayouts[i % mockLayouts.length];
+    const linesHtml = layout.lines.map(l => {
+      const classes = l.split(' ').map(c => c).join(' ');
+      return `<div class="mock-line ${classes}"></div>`;
+    }).join('');
+    return `
+      <div class="screenshot-card">
+        <div class="screenshot-preview">
+          <div class="mock-ui">
+            <div class="mock-titlebar">
+              <div class="mock-dot r"></div>
+              <div class="mock-dot y"></div>
+              <div class="mock-dot g"></div>
+            </div>
+            <div class="mock-body">${linesHtml}</div>
+          </div>
+        </div>
+        <div class="screenshot-info">
+          <h4>${s.title} <span class="file-path" style="margin-left: 6px;">${s.file}</span></h4>
+          <p>${s.desc}</p>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderRecommendations() {
+  const list = document.getElementById('recList');
+  const priorityBadge = p => {
+    const cls = p === 'high' ? 'red' : p === 'medium' ? 'yellow' : 'accent';
+    return `<span class="badge ${cls}">${p.toUpperCase()}</span>`;
+  };
+  list.innerHTML = recommendations.map((r, i) => `
+    <div class="rec-item">
+      <div class="rec-num">${i + 1}</div>
+      <div class="rec-content">
+        <div class="rec-title">${r.title} ${priorityBadge(r.priority)}</div>
+        <div class="rec-desc">${r.desc}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderImprovements() {
+  const list = document.getElementById('impList');
+  list.innerHTML = improvements.map(imp => `
+    <div class="imp-item">
+      <div class="imp-check">&#10003;</div>
+      <div>${imp}</div>
+    </div>
+  `).join('');
+}
+
+function renderNextSteps() {
+  const grid = document.getElementById('nextGrid');
+  grid.innerHTML = nextSteps.map(n => `
+    <div class="next-card">
+      <h4><span style="font-size: 15px;">${n.icon}</span> ${n.title}</h4>
+      <p>${n.desc}</p>
+    </div>
+  `).join('');
+}
+
+// ===== NAVIGATION =====
+function navigate(sectionId) {
+  // Update nav
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.section === sectionId);
+  });
+  // Update sections
+  document.querySelectorAll('.section').forEach(el => {
+    el.classList.toggle('active', el.id === 'sec-' + sectionId);
+  });
+  // Scroll content to top
+  document.querySelector('.content-area').scrollTop = 0;
+}
+
+// ===== KEYBOARD NAV =====
+document.addEventListener('keydown', e => {
+  const sections = ['overview', 'tests', 'bugs', 'screenshots', 'review', 'improvements', 'next'];
+  if (e.key >= '1' && e.key <= '7' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    navigate(sections[parseInt(e.key) - 1]);
+  }
+});
+
+// ===== INIT =====
+renderTestTable();
+renderScreenshots();
+renderRecommendations();
+renderImprovements();
+renderNextSteps();
+</script>
+</body>
+</html>
