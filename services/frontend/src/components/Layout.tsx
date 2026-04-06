@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import { useToast } from "./Toast";
 import type { PromptGroup } from "../types";
 import { useAllPendingApprovals, useSessionSelector } from "../stores/sessionStore";
+import { useMachineStats } from "../stores/machineStore";
 import ConnectionStatus from "./session/ConnectionStatus";
 
 export default function Layout({ children, onHelp }: { children: ReactNode; onHelp?: () => void }) {
@@ -21,6 +22,7 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
   const location = useLocation();
   const navigate = useNavigate();
   const pendingApprovals = useAllPendingApprovals();
+  const machineStats = useMachineStats();
   const activeSessionCount = useSessionSelector(
     (s) => s.sessionOrder.filter((id) => {
       const sess = s.sessions[id];
@@ -228,6 +230,28 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
                 padding: "0 5px",
               }}>
                 {pendingApprovals.length}
+              </span>
+            )}
+          </Link>
+          <Link
+            to="/machines"
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "8px 12px", borderRadius: "var(--radius)",
+              background: location.pathname === "/machines" ? "var(--accent-light)" : "transparent",
+              color: location.pathname === "/machines" ? "var(--accent)" : "var(--text-secondary)",
+              fontSize: 14, textDecoration: "none", fontWeight: location.pathname === "/machines" ? 600 : 400,
+            }}
+          >
+            <span>Machines{machineStats.total > 0 ? ` (${machineStats.online})` : ""}</span>
+            {machineStats.offline > 0 && machineStats.total > 0 && (
+              <span style={{
+                fontSize: 11, fontWeight: 700, minWidth: 18, height: 18,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "var(--danger)", color: "#fff", borderRadius: 20,
+                padding: "0 5px",
+              }}>
+                {machineStats.offline}
               </span>
             )}
           </Link>

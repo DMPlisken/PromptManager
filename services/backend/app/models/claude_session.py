@@ -49,6 +49,9 @@ class ClaudeSession(Base):
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sa.func.now()
     )
+    machine_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("machines.id", ondelete="SET NULL"), nullable=True
+    )
     ended_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -57,6 +60,7 @@ class ClaudeSession(Base):
     group = relationship("PromptGroup", backref="sessions")
     template = relationship("PromptTemplate")
     execution = relationship("TaskExecution")
+    machine = relationship("Machine", back_populates="sessions")
     messages = relationship(
         "SessionMessage", back_populates="session", cascade="all, delete-orphan"
     )
@@ -67,4 +71,5 @@ class ClaudeSession(Base):
     __table_args__ = (
         Index("ix_claude_sessions_status", "status"),
         Index("ix_claude_sessions_group_status", "group_id", "status"),
+        Index("ix_claude_sessions_machine_status", "machine_id", "status"),
     )

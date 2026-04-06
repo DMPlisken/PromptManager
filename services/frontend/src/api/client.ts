@@ -182,6 +182,22 @@ export const api = {
   },
   checkSidecarHealth: () =>
     request<{ status: string; version?: string }>("/sessions/sidecar/health"),
+
+  // Machines
+  getMachines: () =>
+    request<import("../types/machine").Machine[]>("/machines"),
+  getMachine: (id: number) =>
+    request<import("../types/machine").Machine>(`/machines/${id}`),
+  createMachine: (data: { name: string; hostname?: string; platform?: string }) =>
+    request<import("../types/machine").Machine>("/machines", { method: "POST", body: JSON.stringify(data) }),
+  updateMachine: (id: number, data: { name?: string; color?: string; workspace_root?: string; max_concurrent_sessions?: number }) =>
+    request<import("../types/machine").Machine>(`/machines/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteMachine: (id: number) =>
+    request<void>(`/machines/${id}`, { method: "DELETE" }),
+  generatePairingCode: () =>
+    request<import("../types/machine").PairingCode>("/machines/pairing-code", { method: "POST" }),
+  getInstallScript: (platform: string) =>
+    request<{ script: string }>(`/machines/install-script/${platform}`),
 };
 
 export default api;

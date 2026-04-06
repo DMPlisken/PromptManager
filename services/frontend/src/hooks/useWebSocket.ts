@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { sessionStore } from "../stores/sessionStore";
+import { machineStore } from "../stores/machineStore";
 import type { WsServerMessage, SessionMessage } from "../types/session";
+import type { Machine, MachineStatus, MachineHealth } from "../types/machine";
 
 const WS_URL = `ws://${window.location.host}/ws/orchestrator`;
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 15000, 30000];
@@ -110,6 +112,33 @@ export function useWebSocket() {
 
         case "protocol.pong":
           break;
+
+        // Machine messages
+        case "machine.status_changed": {
+          const machineUuid = msg.machineUuid as string;
+          const machineStatus = msg.status as MachineStatus;
+          const lastHealth = msg.lastHealth as MachineHealth | null | undefined;
+          // Find machine by UUID in the store
+          const machineState = machineStore.getState();
+          const matchedMachine = Object.values(machineState.machines).find(
+            (m) => m.machine_uuid === machineUuid
+          );
+          if (matchedMachine) {
+            machineStore.dispatch({
+              type: "MACHINE_STATUS_CHANGED",
+              machineId: matchedMachine.id,
+              status: machineStatus,
+              lastHealth: lastHealth,
+            });
+          }
+          break;
+        }
+
+        case "machine.registered": {
+          const newMachine = msg.machine as Machine;
+          machineStore.dispatch({ type: "MACHINE_ADDED", machine: newMachine });
+          break;
+        }
       }
     } catch (e) {
       console.error("WS message parse error:", e);

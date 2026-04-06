@@ -51,6 +51,7 @@ class SessionManager:
         name: str | None = None,
         permission_mode: str | None = None,
         allowed_tools: list[str] | None = None,
+        machine_id: int | None = None,
     ) -> ClaudeSession:
         session_id = str(uuid.uuid4())
 
@@ -59,6 +60,7 @@ class SessionManager:
             id=session_id,
             group_id=group_id,
             template_id=template_id,
+            machine_id=machine_id,
             name=name or f"Session {datetime.now().strftime('%H:%M')}",
             status=SessionStatus.STARTING.value,
             working_directory=working_directory,
@@ -69,7 +71,22 @@ class SessionManager:
         await db.commit()
         await db.refresh(session)
 
-        # Create on the sidecar
+        # If machine_id is provided, dispatch to remote agent instead of sidecar
+        if machine_id is not None:
+            await self._create_session_on_agent(
+                db=db,
+                session=session,
+                session_id=session_id,
+                prompt=prompt,
+                working_directory=working_directory,
+                model=model,
+                permission_mode=permission_mode,
+                allowed_tools=allowed_tools,
+                machine_id=machine_id,
+            )
+            return session
+
+        # Fallback: create on the local sidecar
         try:
             await sidecar_client.create_session(
                 session_id=session_id,
@@ -97,6 +114,60 @@ class SessionManager:
             raise
 
         return session
+
+    async def _create_session_on_agent(
+        self,
+        db: AsyncSession,
+        session: ClaudeSession,
+        session_id: str,
+        prompt: str,
+        working_directory: str,
+        model: str | None,
+        permission_mode: str | None,
+        allowed_tools: list[str] | None,
+        machine_id: int,
+    ) -> None:
+        """Dispatch session creation to a remote machine agent."""
+        from app.models.machine import Machine
+        from app.services.agent_manager import agent_manager
+
+        # Look up the machine to get its UUID
+        result = await db.execute(
+            select(Machine).where(Machine.id == machine_id)
+        )
+        machine = result.scalar_one_or_none()
+
+        if machine is None:
+            session.status = SessionStatus.FAILED.value
+            await db.commit()
+            raise ValueError(f"Machine with id {machine_id} not found")
+
+        if not agent_manager.is_online(machine.machine_uuid):
+            session.status = SessionStatus.FAILED.value
+            await db.commit()
+            raise ValueError(
+                f"Machine '{machine.name}' is offline. Cannot create session."
+            )
+
+        # Dispatch to the agent via WebSocket
+        dispatched = await agent_manager.dispatch_session_create(
+            machine.machine_uuid,
+            {
+                "session_id": session_id,
+                "prompt": prompt,
+                "working_directory": working_directory,
+                "model": model or settings.claude_default_model,
+                "permission_mode": permission_mode or settings.claude_permission_mode,
+                "allowed_tools": allowed_tools,
+            },
+        )
+
+        if not dispatched:
+            session.status = SessionStatus.FAILED.value
+            await db.commit()
+            raise ValueError(
+                f"Failed to dispatch session to machine '{machine.name}'"
+            )
 
     # ------------------------------------------------------------------
     # Background stream relay
@@ -247,19 +318,36 @@ class SessionManager:
 
     async def abort_session(self, db: AsyncSession, session_id: str) -> None:
         async with self._get_lock(session_id):
-            try:
-                await sidecar_client.abort_session(session_id)
-            except Exception:
-                pass
+            # Look up the session to determine if it's on a remote machine
+            result = await db.execute(
+                select(ClaudeSession).where(ClaudeSession.id == session_id)
+            )
+            session = result.scalar_one_or_none()
+
+            if session and session.machine_id is not None:
+                # Abort on remote agent
+                from app.models.machine import Machine
+                from app.services.agent_manager import agent_manager
+
+                machine_result = await db.execute(
+                    select(Machine).where(Machine.id == session.machine_id)
+                )
+                machine = machine_result.scalar_one_or_none()
+                if machine:
+                    await agent_manager.dispatch_session_abort(
+                        machine.machine_uuid, session_id
+                    )
+            else:
+                # Abort on local sidecar
+                try:
+                    await sidecar_client.abort_session(session_id)
+                except Exception:
+                    pass
 
             task = self.active_streams.pop(session_id, None)
             if task:
                 task.cancel()
 
-            result = await db.execute(
-                select(ClaudeSession).where(ClaudeSession.id == session_id)
-            )
-            session = result.scalar_one_or_none()
             if session:
                 session.status = SessionStatus.TERMINATED.value
                 session.ended_at = datetime.utcnow()

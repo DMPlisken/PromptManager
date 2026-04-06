@@ -33,6 +33,7 @@ async def create_session(body: SessionCreate, db: AsyncSession = Depends(get_db)
             name=body.name,
             permission_mode=body.permission_mode,
             allowed_tools=body.allowed_tools,
+            machine_id=body.machine_id,
         )
         return session
     except ValueError as exc:
@@ -48,6 +49,7 @@ async def create_session(body: SessionCreate, db: AsyncSession = Depends(get_db)
 async def list_sessions(
     status: str | None = None,
     group_id: int | None = None,
+    machine_id: int | None = None,
     limit: int = Query(default=50, le=200),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -57,6 +59,8 @@ async def list_sessions(
         query = query.where(ClaudeSession.status == status)
     if group_id:
         query = query.where(ClaudeSession.group_id == group_id)
+    if machine_id is not None:
+        query = query.where(ClaudeSession.machine_id == machine_id)
     query = query.limit(limit).offset(offset)
     result = await db.execute(query)
     return result.scalars().all()

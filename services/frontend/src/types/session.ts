@@ -98,6 +98,7 @@ export interface SessionCreateRequest {
   name?: string;
   permissionMode?: string;
   allowedTools?: string[];
+  machineId?: number;
 }
 
 // WebSocket protocol — client messages
@@ -125,7 +126,9 @@ export type WsServerMessage =
     }
   | { type: "session.status_changed"; sessionId: string; status: SessionStatus }
   | { type: "protocol.pong"; timestamp: number; serverTimestamp: number }
-  | { type: "system.sidecar_status"; status: "connected" | "disconnected" };
+  | { type: "system.sidecar_status"; status: "connected" | "disconnected" }
+  | { type: "machine.status_changed"; machineUuid: string; status: string; lastHealth?: unknown }
+  | { type: "machine.registered"; machine: unknown };
 
 // Session store state
 export interface SessionState {

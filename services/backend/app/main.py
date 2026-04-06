@@ -8,9 +8,10 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.database import engine, async_session
-from app.routers import groups, variables, templates, executions, tasks, images, tags, task_images, export_import, sessions, websocket
+from app.routers import groups, variables, templates, executions, tasks, images, tags, task_images, export_import, sessions, websocket, machines, agent_ws
 from app.middleware.auth import router as auth_router
 from app.services.session_manager import session_manager
+from app.services.agent_manager import agent_manager
 
 # Ensure new models are registered with Base.metadata
 import app.models  # noqa: F401
@@ -58,6 +59,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
+    await agent_manager.shutdown()
     await session_manager.shutdown()
     await engine.dispose()
     logger.info("shutdown")
@@ -89,7 +91,9 @@ app.include_router(tags.router, prefix="/api/tags", tags=["tags"])
 app.include_router(task_images.router, prefix="/api/task-images", tags=["task-images"])
 app.include_router(export_import.router, prefix="/api/groups", tags=["export-import"])
 app.include_router(sessions.router, prefix="/api/sessions", tags=["sessions"])
+app.include_router(machines.router, prefix="/api/machines", tags=["machines"])
 app.include_router(websocket.router)
+app.include_router(agent_ws.router)
 
 
 # ---------------------------------------------------------------------------

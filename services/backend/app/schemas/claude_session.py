@@ -10,6 +10,7 @@ class SessionCreate(BaseModel):
     group_id: int | None = None
     template_id: int | None = None
     execution_id: int | None = None
+    machine_id: int | None = None
     name: str | None = None
     working_directory: str
     model: str | None = None
@@ -34,6 +35,7 @@ class SessionResponse(BaseModel):
     group_id: int | None
     template_id: int | None
     execution_id: int | None
+    machine_id: int | None
     name: str | None
     status: str
     working_directory: str

@@ -125,6 +125,43 @@
 - [x] Docs: ManualPage.tsx updated with sectionMockups entries for new sections
 - [x] Docs: USER_MANUAL.md sections 1 and 12 updated to document the orchestrator sidecar setup
 
+## Multi-Machine Agent Management — Backend Infrastructure
+
+### Completed
+- [x] Backend: Machine model (app/models/machine.py) — machine_uuid, name, hostname, platform, status, agent/CLI versions, API key hash, pairing code, health JSON, registered_at
+- [x] Backend: ClaudeSession model updated — machine_id FK to machines table, machine relationship, composite index on (machine_id, status)
+- [x] Backend: Alembic migration 008_multi_machine — creates machines table with all columns/indexes, adds machine_id FK to claude_sessions
+- [x] Backend: Machine Pydantic schemas (app/schemas/machine.py) — MachineCreate, MachineUpdate, MachineResponse, MachineHealthResponse, PairingCodeResponse, PairingRequest, PairingResponse
+- [x] Backend: SessionCreate/SessionResponse schemas updated — machine_id field added
+- [x] Backend: AgentConnectionManager service (app/services/agent_manager.py) — WebSocket connection tracking, API key validation, heartbeat handling, session output relay, session lifecycle (started/completed/failed), approval forwarding, shutdown
+- [x] Backend: Machines REST router (app/routers/machines.py) — GET/POST/PUT/DELETE /api/machines, pairing-code generation, pair completion, health endpoint, install script serving (mac/windows)
+- [x] Backend: Agent WebSocket endpoint (app/routers/agent_ws.py) — /ws/agent with agent.hello auth handshake, server.welcome, message loop, graceful disconnect cleanup
+- [x] Backend: SessionManager updated (app/services/session_manager.py) — machine_id parameter in create_session, _create_session_on_agent dispatch, abort_session with remote agent support
+- [x] Backend: Sessions router updated (app/routers/sessions.py) — machine_id query param on list_sessions, machine_id passed to create_session
+- [x] Backend: models/__init__.py updated — Machine import added before ClaudeSession
+- [x] Backend: main.py updated — machines + agent_ws routers registered, agent_manager.shutdown() in lifespan
+
+## Node.js Agent Package — @promptflow/agent
+
+### Completed
+- [x] Agent: package.json with commander, ws, yaml dependencies (services/agent/package.json)
+- [x] Agent: TypeScript config with CommonJS target ES2022 (services/agent/tsconfig.json)
+- [x] Agent: Message protocol types — agent/server messages, stream-json types, content blocks (src/protocol.ts)
+- [x] Agent: Config loader — YAML file + env vars + CLI args, cross-platform ~ expansion, config persistence (src/config.ts)
+- [x] Agent: WebSocket client — outbound connection, agent.hello handshake, exponential backoff reconnect (1s-30s), 30s heartbeat (src/connection.ts)
+- [x] Agent: Session runner — spawns Claude CLI with stream-json, stdin prompt, line-by-line stdout parsing, cross-platform abort (SIGTERM/taskkill) (src/session-runner.ts)
+- [x] Agent: System health reporter — CPU, memory, disk metrics with Mac/Windows support (src/health.ts)
+- [x] Agent: HTTP pairing flow — POST to /api/machines/pair, saves config on success (src/pairing.ts)
+- [x] Agent: Main Agent class — orchestrates connection, sessions, health, signal handling (src/agent.ts)
+- [x] Agent: CLI entry point — pair, start, status, config commands via commander (src/index.ts)
+- [x] Agent: Example config file (promptflow-agent.yaml.example)
+- [x] Agent: README with install, setup, and platform notes (README.md)
+
+### Pending
+- [ ] Backend: Tests for machine CRUD, pairing flow, agent WebSocket, agent manager
+- [ ] Frontend: Machine management UI (list, add, pair, health dashboard)
+- [ ] Frontend: Machine selector in session creation modal
+
 ### Pending (Future Enhancements)
 - [ ] Frontend: Markdown rendering for assistant messages
 - [ ] Frontend: Code block syntax highlighting

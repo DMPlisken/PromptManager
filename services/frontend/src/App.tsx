@@ -9,6 +9,7 @@ import TaskDetailPage from "./pages/TaskDetailPage";
 import HistoryPage from "./pages/HistoryPage";
 import ManualPage from "./pages/ManualPage";
 import SessionsPage from "./pages/SessionsPage";
+import MachinesPage from "./pages/MachinesPage";
 
 export default function App() {
   const [helpSection, setHelpSection] = useState<string | null>(null);
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="/history" element={<HistoryPage onHelp={setHelpSection} />} />
         <Route path="/manual" element={<ManualPage />} />
         <Route path="/sessions" element={<SessionsPage />} />
+        <Route path="/machines" element={<MachinesPage />} />
         <Route path="*" element={<Navigate to="/tasks" replace />} />
       </Routes>
       <HelpPanel sectionId={helpSection} onClose={() => setHelpSection(null)} />

@@ -55,3 +55,15 @@
 ### 2026-04-05 — Update user manual and help content for orchestrator docs (`feature/claude-orchestrator`)
 
 > Update the PromptFlow user manual and help content to document the Claude Code CLI orchestration feature. Work in `/Users/cubev/01_Repositories/PromptManager-worktrees/claude-orchestrator/`. [Update USER_MANUAL.md with sections 13 (Claude Code Sessions) and 14 (Multi-Machine Orchestration), update helpContent.ts with sessions and machines help entries, update ManualPage.tsx sectionMockups, update sections 1 and 12, update TOC and last-updated date]
+
+### 2026-04-06 10:15 — Full multi-machine agent implementation with setup wizard (`feature/claude-orchestrator`)
+
+> continue the development and offer a full support process through the app frontend to install and configure everything required on the windows or mac computers to run and remote control and monitor the claude cli session. we also need a feature to manage and configure the clients within the app
+
+### 2026-04-06 — Build complete backend infrastructure for multi-machine agent management (`feature/claude-orchestrator`)
+
+> Build the complete backend infrastructure for multi-machine agent management in PromptFlow. Work in `/Users/cubev/01_Repositories/PromptManager-worktrees/claude-orchestrator/services/backend/`. [12-task specification: Machine model, machine_id FK on ClaudeSession, Alembic migration 008, machine schemas, AgentConnectionManager service, machines REST router, agent WebSocket endpoint, update session_manager, update sessions router, install script endpoint, update models/__init__.py, update main.py]
+
+### 2026-04-05 — Create Node.js CLI agent package for remote orchestration (`feature/claude-orchestrator`)
+
+> Create a complete Node.js CLI agent package at `/Users/cubev/01_Repositories/PromptManager-worktrees/claude-orchestrator/services/agent/` that runs on developer workstations (Mac and Windows) and connects to the PromptFlow server. [Detailed spec: WebSocket client with reconnection, Claude CLI subprocess spawning with stream-json output, system health reporting, HTTP pairing flow, commander CLI with pair/start/status/config commands, TypeScript with CommonJS, cross-platform support]

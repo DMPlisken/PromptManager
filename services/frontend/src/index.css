@@ -22,6 +22,11 @@
   --status-completed: #7c5cfc;
   --status-failed: #e05555;
   --status-terminated: #6b6b85;
+
+  /* Machine status colors */
+  --machine-online: var(--status-running);
+  --machine-offline: var(--status-terminated);
+  --machine-pairing: var(--accent);
 }
 
 * {
