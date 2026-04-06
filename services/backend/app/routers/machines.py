@@ -14,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.machine import Machine
+from app.models.claude_session import SessionStatus
+from app.models.session_message import SessionMessage
 from app.schemas.machine import (
     MachineCreate,
     MachineHealthResponse,
@@ -424,7 +426,7 @@ async def test_machine(machine_id: int, db: AsyncSession = Depends(get_db)):
     (up to 30 seconds), and returns the output.
     """
     import asyncio
-    from app.services.session_manager import session_manager
+    from app.services.session_manager import session_manager  # local to avoid circular
 
     machine = await db.get(Machine, machine_id)
     if not machine:
@@ -459,7 +461,6 @@ async def test_machine(machine_id: int, db: AsyncSession = Depends(get_db)):
                 break
 
         # Collect output messages
-        from app.models.session_message import SessionMessage
         result = await db.execute(
             select(SessionMessage)
             .where(SessionMessage.session_id == session_id)
