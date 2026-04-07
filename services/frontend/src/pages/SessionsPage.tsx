@@ -198,8 +198,15 @@ export default function SessionsPage() {
     [activeSessionId, actions]
   );
 
+  const handleEndSession = useCallback(() => {
+    if (activeSessionId) {
+      send({ type: "session.end", sessionId: activeSessionId });
+      toast.success("Session ending", "Claude will finish current work and stop.");
+    }
+  }, [activeSessionId, send, toast]);
+
   const handleAbort = useCallback(() => {
-    if (activeSessionId && confirm("Abort this session?")) {
+    if (activeSessionId && confirm("Abort this session? This will force-kill the process.")) {
       actions.abortSession(activeSessionId);
     }
   }, [activeSessionId, actions]);
@@ -375,7 +382,14 @@ export default function SessionsPage() {
               </div>
               <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                 {isSessionActive && (
-                  <button onClick={handleAbort} style={btnStyle("danger")}>Abort</button>
+                  <>
+                    <button onClick={handleEndSession} style={{
+                      ...btnStyle("secondary"),
+                      borderColor: "var(--warning)",
+                      color: "var(--warning)",
+                    }}>End Session</button>
+                    <button onClick={handleAbort} style={btnStyle("danger")}>Abort</button>
+                  </>
                 )}
               </div>
             </div>

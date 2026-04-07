@@ -118,10 +118,10 @@ export class SessionRunner extends EventEmitter {
       model: cmd.model,
     });
 
-    // Write prompt to stdin and close it
+    // Write initial prompt to stdin — keep stdin OPEN for follow-up messages
     if (child.stdin) {
-      child.stdin.write(cmd.prompt);
-      child.stdin.end();
+      child.stdin.write(cmd.prompt + "\n");
+      // Do NOT close stdin — we'll send follow-up messages later
     }
 
     // Read stdout line-by-line (stream-json format: one JSON object per line)
@@ -177,7 +177,41 @@ export class SessionRunner extends EventEmitter {
   }
 
   /**
-   * Abort a running session.
+   * Send a follow-up message to a running session's stdin.
+   * This allows multi-turn conversations with Claude.
+   */
+  sendInput(sessionId: string, text: string): boolean {
+    const child = this.processes.get(sessionId);
+    if (!child || !child.stdin || child.stdin.destroyed) return false;
+
+    try {
+      // For stream-json input format, send as a JSON message
+      const inputMsg = JSON.stringify({ type: "user", content: text });
+      child.stdin.write(inputMsg + "\n");
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Gracefully end a session by closing stdin.
+   * Claude CLI will finish its current work and exit.
+   */
+  endSession(sessionId: string): boolean {
+    const child = this.processes.get(sessionId);
+    if (!child || !child.stdin) return false;
+
+    try {
+      child.stdin.end();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Abort a running session (force kill).
    * Sends SIGTERM on Mac/Linux, uses taskkill on Windows.
    */
   abortSession(sessionId: string): boolean {
@@ -239,7 +273,8 @@ export class SessionRunner extends EventEmitter {
 // ---------------------------------------------------------------------------
 
 function buildCliArgs(cmd: ServerSessionCreate): string[] {
-  const args: string[] = ["--print", "--output-format", "stream-json", "--verbose"];
+  // Use interactive mode (not --print) so stdin stays open for follow-up messages
+  const args: string[] = ["--output-format", "stream-json", "--verbose", "--input-format", "stream-json"];
 
   if (cmd.model) {
     args.push("--model", cmd.model);

@@ -123,6 +123,18 @@ class AgentConnectionManager:
     # Dispatch commands to agents
     # ------------------------------------------------------------------
 
+    async def send_to_agent(self, machine_uuid: str, message: dict) -> bool:
+        """Send an arbitrary JSON message to a connected agent."""
+        ws = self.connections.get(machine_uuid)
+        if ws is None:
+            return False
+        try:
+            await ws.send_text(json.dumps(message))
+            return True
+        except Exception as exc:
+            logger.error("send_to_agent_failed", machine_uuid=machine_uuid, error=str(exc))
+            return False
+
     async def dispatch_session_create(
         self, machine_uuid: str, session_data: dict
     ) -> bool:

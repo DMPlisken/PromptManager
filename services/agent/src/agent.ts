@@ -114,6 +114,14 @@ export class Agent {
         this.abortSession(msg.sessionId);
         break;
 
+      case "server.session.input":
+        this.sendInput(msg.sessionId, (msg as any).text || "");
+        break;
+
+      case "server.session.end":
+        this.endSession(msg.sessionId);
+        break;
+
       case "server.error":
         console.error(`Server error [${msg.code}]: ${msg.message}`);
         break;
@@ -135,6 +143,25 @@ export class Agent {
     );
 
     await this.sessions.createSession(cmd);
+  }
+
+  /** Send follow-up input to a running session. */
+  private sendInput(sessionId: string, text: string): void {
+    if (!text.trim()) return;
+    console.log(`Sending input to session ${sessionId}: "${text.substring(0, 60)}..."`);
+    const sent = this.sessions.sendInput(sessionId, text);
+    if (!sent) {
+      console.warn(`Session ${sessionId} not found or stdin closed (cannot send input)`);
+    }
+  }
+
+  /** Gracefully end a session (close stdin, let Claude finish). */
+  private endSession(sessionId: string): void {
+    console.log(`Ending session ${sessionId} (closing stdin)`);
+    const ended = this.sessions.endSession(sessionId);
+    if (!ended) {
+      console.warn(`Session ${sessionId} not found (may have already completed)`);
+    }
   }
 
   /** Handle a session.abort command from the server. */
