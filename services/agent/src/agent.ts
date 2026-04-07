@@ -122,6 +122,16 @@ export class Agent {
         this.endSession(msg.sessionId);
         break;
 
+      case "server.agent.exec":
+        // Execute a shell command on this machine (for updates, diagnostics, etc.)
+        await this.execCommand(msg as any);
+        break;
+
+      case "server.agent.update":
+        // Pull latest code and restart the agent
+        await this.selfUpdate();
+        break;
+
       case "server.error":
         console.error(`Server error [${msg.code}]: ${msg.message}`);
         break;
@@ -170,6 +180,100 @@ export class Agent {
     const aborted = this.sessions.abortSession(sessionId);
     if (!aborted) {
       console.warn(`Session ${sessionId} not found (may have already completed)`);
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Remote execution & self-update
+  // -----------------------------------------------------------------------
+
+  /** Execute a shell command on this machine and send output back to server. */
+  private async execCommand(msg: { commandId?: string; command: string }): Promise<void> {
+    const { execSync } = require("child_process");
+    const commandId = msg.commandId || "unknown";
+    const command = msg.command;
+
+    console.log(`[exec:${commandId}] Running: ${command}`);
+
+    try {
+      const output = execSync(command, {
+        timeout: 60000,
+        encoding: "utf-8",
+        cwd: this.config.workspaceRoot || process.env.HOME || "/tmp",
+        env: { ...process.env, PATH: process.env.PATH },
+      });
+
+      console.log(`[exec:${commandId}] Success`);
+      this.connection.send({
+        type: "agent.exec.result",
+        commandId,
+        success: true,
+        output: output.substring(0, 10000),
+      } as any);
+    } catch (err: any) {
+      const errOutput = err.stdout?.toString() || err.stderr?.toString() || err.message || String(err);
+      console.error(`[exec:${commandId}] Failed: ${errOutput.substring(0, 200)}`);
+      this.connection.send({
+        type: "agent.exec.result",
+        commandId,
+        success: false,
+        output: errOutput.substring(0, 10000),
+        exitCode: err.status,
+      } as any);
+    }
+  }
+
+  /** Pull latest agent code from git and restart. */
+  private async selfUpdate(): Promise<void> {
+    console.log("[update] Starting self-update...");
+    const { execSync } = require("child_process");
+    const agentDir = require("path").resolve(__dirname, "..");
+
+    try {
+      // Pull latest code
+      const pullOutput = execSync("git pull origin feature/claude-orchestrator", {
+        cwd: agentDir,
+        timeout: 30000,
+        encoding: "utf-8",
+      });
+      console.log(`[update] git pull: ${pullOutput.trim()}`);
+
+      // Install dependencies if needed
+      execSync("npm install --no-audit --no-fund 2>/dev/null || true", {
+        cwd: agentDir,
+        timeout: 60000,
+        encoding: "utf-8",
+      });
+
+      this.connection.send({
+        type: "agent.exec.result",
+        commandId: "self-update",
+        success: true,
+        output: `Updated: ${pullOutput.trim()}. Restarting...`,
+      } as any);
+
+      // Restart: exit with code 0 and let the process supervisor restart us
+      console.log("[update] Restarting agent...");
+      setTimeout(() => {
+        // Spawn a new agent process and exit this one
+        const { spawn: spawnChild } = require("child_process");
+        const child = spawnChild("npx", ["tsx", "src/index.ts", "start"], {
+          cwd: agentDir,
+          detached: true,
+          stdio: "ignore",
+          env: process.env,
+        });
+        child.unref();
+        process.exit(0);
+      }, 1000);
+    } catch (err: any) {
+      console.error(`[update] Failed: ${err.message}`);
+      this.connection.send({
+        type: "agent.exec.result",
+        commandId: "self-update",
+        success: false,
+        output: err.message || String(err),
+      } as any);
     }
   }
 

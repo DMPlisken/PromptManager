@@ -265,6 +265,67 @@ async def pair_machine(
 
 
 # ---------------------------------------------------------------------------
+# Remote execution & updates
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{machine_id}/exec")
+async def exec_on_machine(
+    machine_id: int,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """Execute a shell command on a remote machine via its agent."""
+    machine = await db.get(Machine, machine_id)
+    if not machine:
+        raise HTTPException(404, "Machine not found")
+
+    if not agent_manager.is_online(machine.machine_uuid):
+        raise HTTPException(503, "Machine is offline")
+
+    command = body.get("command", "")
+    if not command.strip():
+        raise HTTPException(400, "Command is required")
+
+    import uuid
+    command_id = str(uuid.uuid4())[:8]
+
+    sent = await agent_manager.send_to_agent(machine.machine_uuid, {
+        "type": "server.agent.exec",
+        "commandId": command_id,
+        "command": command,
+    })
+
+    if not sent:
+        raise HTTPException(503, "Failed to send command to agent")
+
+    return {"commandId": command_id, "status": "sent", "command": command}
+
+
+@router.post("/{machine_id}/update")
+async def update_machine_agent(
+    machine_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Trigger a self-update on a remote machine's agent (git pull + restart)."""
+    machine = await db.get(Machine, machine_id)
+    if not machine:
+        raise HTTPException(404, "Machine not found")
+
+    if not agent_manager.is_online(machine.machine_uuid):
+        raise HTTPException(503, "Machine is offline")
+
+    sent = await agent_manager.send_to_agent(machine.machine_uuid, {
+        "type": "server.agent.update",
+    })
+
+    if not sent:
+        raise HTTPException(503, "Failed to send update command to agent")
+
+    return {"status": "update_triggered", "machine_name": machine.name}
+
+
+# ---------------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------------
 

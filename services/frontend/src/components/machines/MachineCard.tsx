@@ -118,6 +118,7 @@ export default function MachineCard({ machine, onEdit, onRemove }: MachineCardPr
   const [lastSeen, setLastSeen] = useState(() => relativeTime(machine.last_seen_at));
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const [testing, setTesting] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; status: string; output: string; machine_name: string; message_count: number } | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
 
@@ -132,6 +133,24 @@ export default function MachineCard({ machine, onEdit, onRemove }: MachineCardPr
       setTestError(e?.message || "Test failed");
     } finally {
       setTesting(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    setUpdating(true);
+    setTestResult(null);
+    setTestError(null);
+    try {
+      await api.updateMachineAgent(machine.id);
+      setTestResult({
+        success: true, status: "updating",
+        output: "Update triggered. The agent will pull latest code and restart.\nIt may go offline briefly and reconnect automatically.",
+        machine_name: machine.name, message_count: 0,
+      });
+    } catch (e: any) {
+      setTestError(e?.message || "Update failed");
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -292,18 +311,32 @@ export default function MachineCard({ machine, onEdit, onRemove }: MachineCardPr
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           {machine.status === "online" && (
-            <button
-              onClick={handleTest}
-              disabled={testing}
-              style={{
-                ...smallBtnStyle,
-                color: testing ? "var(--text-muted)" : "var(--accent)",
-                borderColor: testing ? "var(--border)" : "var(--accent)",
-                cursor: testing ? "wait" : "pointer",
-              }}
-            >
-              {testing ? "Testing..." : "Test"}
-            </button>
+            <>
+              <button
+                onClick={handleTest}
+                disabled={testing}
+                style={{
+                  ...smallBtnStyle,
+                  color: testing ? "var(--text-muted)" : "var(--accent)",
+                  borderColor: testing ? "var(--border)" : "var(--accent)",
+                  cursor: testing ? "wait" : "pointer",
+                }}
+              >
+                {testing ? "Testing..." : "Test"}
+              </button>
+              <button
+                onClick={handleUpdate}
+                disabled={updating}
+                style={{
+                  ...smallBtnStyle,
+                  color: updating ? "var(--text-muted)" : "var(--success)",
+                  borderColor: updating ? "var(--border)" : "var(--success)",
+                  cursor: updating ? "wait" : "pointer",
+                }}
+              >
+                {updating ? "Updating..." : "Update"}
+              </button>
+            </>
           )}
           <button onClick={() => onEdit(machine)} style={smallBtnStyle}>Edit</button>
           <button

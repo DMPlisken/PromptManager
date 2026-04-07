@@ -210,6 +210,10 @@ export const api = {
     request<{ script: string }>(`/machines/install-script/${platform}`),
   testMachine: (id: number) =>
     request<{ success: boolean; status: string; output: string; session_id: string; machine_name: string; message_count: number }>(`/machines/${id}/test`, { method: "POST" }),
+  updateMachineAgent: (id: number) =>
+    request<{ status: string; machine_name: string }>(`/machines/${id}/update`, { method: "POST" }),
+  execOnMachine: (id: number, command: string) =>
+    request<{ commandId: string; status: string; command: string }>(`/machines/${id}/exec`, { method: "POST", body: JSON.stringify({ command }) }),
 };
 
 export default api;
