@@ -168,7 +168,17 @@ export const api = {
   createSession: (data: import("../types/session").SessionCreateRequest) =>
     request<import("../types/session").ClaudeSession>("/sessions", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        prompt: data.prompt,
+        working_directory: data.workingDirectory,
+        model: data.model,
+        name: data.name,
+        machine_id: data.machineId,
+        group_id: data.groupId,
+        template_id: data.templateId,
+        permission_mode: data.permissionMode,
+        allowed_tools: data.allowedTools,
+      }),
     }),
   getSession: (id: string) =>
     request<import("../types/session").ClaudeSession>(`/sessions/${id}`),

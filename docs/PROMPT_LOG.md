@@ -103,3 +103,7 @@
 ### 2026-04-07 14:00 — UX iterations 6-10 and comprehensive summary report (`feature/claude-orchestrator`)
 
 > You are performing UX improvement iterations 6-10 on PromptFlow AND creating the final comprehensive report. Work in `/Users/cubev/01_Repositories/PromptManager-worktrees/claude-orchestrator/`. Part 1: Create Iteration Reports (docs/) — ux-iterations-summary.html and ux-iteration-2.html through ux-iteration-10.html. Part 2: Backend Polish (iterations 6-8) — machines.py stale pairing cleanup, session_manager.py better error messages, agent_manager.py logging. Part 3: Documentation Updates (iterations 9-10) — USER_MANUAL.md with troubleshooting section, ROADMAP_PROGRESS.md with v2.1 UX Polish section.
+
+### 2026-04-07 — Sequential E2E walkthrough steps 9-15 with 20 iterations, expert reviews, per-step reports (`feature/claude-orchestrator`)
+
+> prepare unit tests and e2e frontend tests for every step from machine-setup-guide.html starting with step 9 through step 15. Every step documented with real screenshots. Each step reviewed by 5 independent expert agents. Problems fixed immediately. Complete walkthrough repeated 20 times sequentially. Per-step interactive HTML reports.
