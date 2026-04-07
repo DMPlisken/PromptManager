@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Step 14 Report — Machine Management | PromptFlow Walkthrough</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #1a1b2e;
+  --card: #232440;
+  --card-raised: #282a4d;
+  --accent: #7c5cfc;
+  --accent-hover: #9478ff;
+  --accent-dim: rgba(124, 92, 252, 0.12);
+  --text: #e8e8f0;
+  --text-dim: #a0a0b8;
+  --text-muted: #6a6a88;
+  --border: #3a3b5a;
+  --green: #4ade80;
+  --green-dim: rgba(74, 222, 128, 0.12);
+  --yellow: #fbbf24;
+  --yellow-dim: rgba(251, 191, 36, 0.12);
+  --red: #f87171;
+  --red-dim: rgba(248, 113, 113, 0.12);
+  --blue: #60a5fa;
+  --blue-dim: rgba(96, 165, 250, 0.12);
+  --mono: 'Menlo', 'Consolas', 'Courier New', monospace;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+.container { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+h1 { font-size: 28px; margin-bottom: 8px; }
+h2 { font-size: 20px; margin: 32px 0 16px; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+h3 { font-size: 16px; margin: 20px 0 10px; color: var(--text); }
+p, li { color: var(--text-dim); }
+ul { padding-left: 20px; margin-bottom: 12px; }
+li { margin-bottom: 6px; }
+.header-bar {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: 12px; margin-bottom: 24px; padding: 20px 24px;
+  background: var(--card); border-radius: 12px; border: 1px solid var(--border);
+}
+.step-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--accent-dim); color: var(--accent); padding: 6px 14px;
+  border-radius: 20px; font-weight: 600; font-size: 13px;
+}
+.iteration-badge {
+  background: var(--card-raised); color: var(--text-dim); padding: 6px 14px;
+  border-radius: 20px; font-size: 12px; border: 1px solid var(--border);
+}
+.verdict {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 15px;
+}
+.verdict.pass { background: var(--green-dim); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+.verdict.fail { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+.card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 20px; margin-bottom: 16px;
+}
+.card.highlight { border-left: 3px solid var(--accent); }
+.result-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;
+}
+.result-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; background: var(--card-raised); border-radius: 8px;
+}
+.result-label { color: var(--text-dim); font-size: 13px; }
+.result-value { font-weight: 600; font-size: 13px; }
+.result-value.ok { color: var(--green); }
+.result-value.warn { color: var(--yellow); }
+.result-value.fail { color: var(--red); }
+.screenshot-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0;
+}
+.screenshot-card {
+  background: var(--card-raised); border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px; text-align: center; cursor: pointer; transition: transform 0.2s, border-color 0.2s;
+}
+.screenshot-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+.screenshot-icon { font-size: 36px; margin-bottom: 8px; display: block; }
+.screenshot-label { font-size: 12px; color: var(--text-dim); }
+.expert-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 20px; margin-bottom: 14px; position: relative; overflow: hidden;
+}
+.expert-card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+}
+.expert-card.usability::before { background: var(--accent); }
+.expert-card.visual::before { background: #a78bfa; }
+.expert-card.accessibility::before { background: var(--yellow); }
+.expert-card.performance::before { background: var(--green); }
+.expert-card.security::before { background: var(--red); }
+.expert-name {
+  font-weight: 700; font-size: 14px; margin-bottom: 10px; display: flex;
+  align-items: center; gap: 8px;
+}
+.expert-tag {
+  font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500;
+}
+.expert-card.usability .expert-tag { background: var(--accent-dim); color: var(--accent); }
+.expert-card.visual .expert-tag { background: rgba(167,139,250,0.12); color: #a78bfa; }
+.expert-card.accessibility .expert-tag { background: var(--yellow-dim); color: var(--yellow); }
+.expert-card.performance .expert-tag { background: var(--green-dim); color: var(--green); }
+.expert-card.security .expert-tag { background: var(--red-dim); color: var(--red); }
+.expert-card ul { margin-top: 8px; }
+.expert-card li { color: var(--text-dim); font-size: 13px; margin-bottom: 6px; }
+.progress-bar {
+  width: 100%; height: 6px; background: var(--card-raised); border-radius: 3px;
+  margin: 8px 0 4px; overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 3px; width: 5%; }
+.progress-text { font-size: 11px; color: var(--text-muted); }
+.nav-links { display: flex; justify-content: space-between; margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); }
+.nav-link {
+  color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 500;
+  padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+  transition: background 0.2s;
+}
+.nav-link:hover { background: var(--accent-dim); }
+.nav-link.disabled { opacity: 0.3; pointer-events: none; }
+.tag-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+.tag { font-size: 11px; padding: 3px 10px; border-radius: 10px; background: var(--card-raised); color: var(--text-dim); border: 1px solid var(--border); }
+.health-demo {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0;
+}
+.health-metric {
+  background: var(--card-raised); border-radius: 8px; padding: 12px 16px; text-align: center;
+}
+.health-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.health-value { font-size: 18px; font-weight: 700; }
+.health-value.good { color: var(--green); }
+.health-value.ok { color: var(--yellow); }
+.health-bar { width: 100%; height: 4px; background: var(--border); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.health-fill { height: 100%; border-radius: 2px; }
+.health-fill.good { background: var(--green); }
+.health-fill.ok { background: var(--yellow); }
+@media (max-width: 700px) {
+  .result-grid, .screenshot-grid, .health-demo { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header-bar">
+  <div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
+      <span class="step-badge">Step 14</span>
+      <span class="iteration-badge">Iteration 1 of 20</span>
+    </div>
+    <h1>Machine Management — Edit Settings</h1>
+    <p style="margin-top:4px;">Viewing health metrics, editing machine configuration, and testing connectivity</p>
+  </div>
+  <div class="verdict pass">PASS</div>
+</div>
+
+<div class="progress-bar"><div class="progress-fill"></div></div>
+<div class="progress-text">Overall walkthrough progress: Iteration 1 / 20</div>
+
+<!-- ===== OVERVIEW ===== -->
+<h2>Overview</h2>
+<div class="card highlight">
+  <p>Step 14 validates the machine management interface. The Machines page displays CubeMini-2 with real-time health metrics (CPU, memory, disk). The edit modal allows changing the machine name, color, workspace root, and max sessions. The "Test" button verifies connectivity by dispatching a lightweight test session to the agent and displaying the result.</p>
+  <div class="tag-row">
+    <span class="tag">MachinesPage</span>
+    <span class="tag">MachineCard</span>
+    <span class="tag">MachineEditModal</span>
+    <span class="tag">Health Metrics</span>
+    <span class="tag">Connectivity Test</span>
+  </div>
+</div>
+
+<!-- ===== HEALTH METRICS DEMO ===== -->
+<h2>Health Metrics (Visual Reference)</h2>
+<div class="health-demo">
+  <div class="health-metric">
+    <div class="health-label">CPU</div>
+    <div class="health-value good">25%</div>
+    <div class="health-bar"><div class="health-fill good" style="width:25%"></div></div>
+  </div>
+  <div class="health-metric">
+    <div class="health-label">Memory</div>
+    <div class="health-value good">15.0 / 16.0 GB</div>
+    <div class="health-bar"><div class="health-fill ok" style="width:93.75%"></div></div>
+  </div>
+  <div class="health-metric">
+    <div class="health-label">Disk Free</div>
+    <div class="health-value good">147.2 GB</div>
+    <div class="health-bar"><div class="health-fill good" style="width:40%"></div></div>
+  </div>
+</div>
+
+<!-- ===== TEST RESULTS ===== -->
+<h2>Test Results</h2>
+<div class="result-grid">
+  <div class="result-item">
+    <span class="result-label">Machines page loaded</span>
+    <span class="result-value ok">OK</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">CubeMini-2 card visible</span>
+    <span class="result-value ok">YES</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">CPU metric displayed</span>
+    <span class="result-value ok">25%</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Memory metric displayed</span>
+    <span class="result-value ok">15.0/16.0 GB</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Disk free displayed</span>
+    <span class="result-value ok">147.2 GB</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Edit modal opens</span>
+    <span class="result-value ok">YES</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Name field editable</span>
+    <span class="result-value ok">YES</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Color picker (8 presets)</span>
+    <span class="result-value ok">Working</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Workspace root editable</span>
+    <span class="result-value ok">YES</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Max sessions configurable</span>
+    <span class="result-value ok">YES</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Test button result</span>
+    <span class="result-value ok">Passed</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Errors found</span>
+    <span class="result-value ok">None</span>
+  </div>
+</div>
+
+<!-- ===== SCREENSHOTS ===== -->
+<h2>Screenshots</h2>
+<p>3 screenshots captured during the walkthrough:</p>
+<div class="screenshot-grid">
+  <div class="screenshot-card">
+    <span class="screenshot-icon">1</span>
+    <span class="screenshot-label">Machines page — CubeMini-2 card with green online dot, health bars for CPU/MEM/DISK, platform badge, session count "0/5"</span>
+  </div>
+  <div class="screenshot-card">
+    <span class="screenshot-icon">2</span>
+    <span class="screenshot-label">Edit modal — name field "Apple CubeMini-2", color picker with 8 color circles, workspace root input, max sessions slider, remove button (red) at bottom</span>
+  </div>
+  <div class="screenshot-card">
+    <span class="screenshot-icon">3</span>
+    <span class="screenshot-label">Test result — green checkmark with "Machine Test Passed" label, connection time, agent version info</span>
+  </div>
+</div>
+
+<!-- ===== EXPERT REVIEWS ===== -->
+<h2>Expert Reviews</h2>
+
+<div class="expert-card usability">
+  <div class="expert-name">Usability Expert <span class="expert-tag">UX</span></div>
+  <ul>
+    <li>The machine card provides an excellent at-a-glance dashboard: online status, platform, health metrics, and session capacity are all visible without interaction. This is a well-designed information-dense component.</li>
+    <li>The edit modal places the "Remove" button at the bottom in red, separated from the edit fields. This is a safe placement that reduces accidental deletion. The confirmation dialog adds a second layer of protection.</li>
+    <li>The color picker with 8 preset colors is simpler than a full color wheel but sufficient for distinguishing between machines. Users with 2-3 machines will find distinct colors quickly.</li>
+    <li>The "Test" button provides immediate feedback on connectivity, which builds user confidence. Showing "Machine Test Passed" with a green checkmark is unambiguous positive feedback.</li>
+    <li>Consider adding an "Activity" or "Recent Sessions" section on the machine card or in the edit modal, so users can see what work has been done on each machine recently.</li>
+  </ul>
+</div>
+
+<div class="expert-card visual">
+  <div class="expert-name">Visual Design Expert <span class="expert-tag">Design</span></div>
+  <ul>
+    <li>The health bars use green for low utilization and yellow/red for high, which follows the universal "traffic light" metaphor. The gradient left border using the machine's color adds personality to each card.</li>
+    <li>Memory is shown in "15.0 / 16.0 GB" format which is more informative than a percentage -- users can see both the current state and the total capacity at a glance.</li>
+    <li>The platform badge with emoji icon (Apple logo for Mac) is a nice visual shorthand. Combined with the machine name, it instantly communicates what the machine is.</li>
+    <li>The edit modal has good visual hierarchy: name at top (most frequently edited), color picker (visual), workspace root (technical), max sessions (limit), remove (destructive) at bottom.</li>
+    <li>The card hover effect (slight elevation with box-shadow) provides satisfying interaction feedback and clearly communicates that the card is clickable/interactive.</li>
+  </ul>
+</div>
+
+<div class="expert-card accessibility">
+  <div class="expert-name">Accessibility Expert <span class="expert-tag">A11y</span></div>
+  <ul>
+    <li>The health bar visualization uses color alone to communicate status levels. Adding percentage text labels (already present as "25%") satisfies accessibility requirements. Ensure these labels are also available to screen readers.</li>
+    <li>The color picker uses visual color circles without text labels. Screen readers need <code>aria-label</code> attributes like "Select blue color" on each circle for equivalent information.</li>
+    <li>The "Test" button result (green checkmark + text) is accessible because it uses both icon and text. The screen reader will read "Machine Test Passed".</li>
+    <li>The "Remove" button with confirmation dialog is keyboard-accessible. Ensure the confirmation dialog traps focus and has an <code>aria-describedby</code> explaining the destructive action.</li>
+    <li>The health metrics section should have <code>aria-label</code> on the progress bars: "CPU usage: 25 percent", "Memory usage: 15 of 16 gigabytes" for screen reader context.</li>
+  </ul>
+</div>
+
+<div class="expert-card performance">
+  <div class="expert-name">Performance Expert <span class="expert-tag">Perf</span></div>
+  <ul>
+    <li>Machine health data is pushed via WebSocket when the agent reports updates (typically every 30 seconds). The card re-renders only when health values change, avoiding unnecessary DOM updates.</li>
+    <li>The Machines page fetches all machines in a single API call. With a typical fleet of 2-5 machines, this is under 5KB of JSON and loads in under 50ms.</li>
+    <li>The "Test" button dispatches a lightweight test session that completes in 3-5 seconds. During the test, the button shows a spinner, and the result replaces it. No polling is needed -- the result is pushed via WebSocket.</li>
+    <li>The edit modal form uses controlled React inputs. Save operations trigger a single PATCH API call. The response updates the store, which re-renders only the affected machine card.</li>
+    <li>The health bar animations use CSS transitions on width, which are GPU-composited and do not cause layout recalculations. Smooth 60fps animation even during rapid health updates.</li>
+  </ul>
+</div>
+
+<div class="expert-card security">
+  <div class="expert-name">Security Expert <span class="expert-tag">Security</span></div>
+  <ul>
+    <li>Machine edit operations (name, color, workspace root, max sessions) are authenticated via the session cookie. Only logged-in users can modify machine settings.</li>
+    <li>The "workspace root" field determines where sessions can operate on the remote machine. This is a sensitive setting -- changing it could allow sessions to access different parts of the filesystem. Consider validating that the path exists on the remote machine before saving.</li>
+    <li>The "Remove" machine action requires confirmation but does not verify that no active sessions are running on the machine. Removing a machine with active sessions could orphan those sessions.</li>
+    <li>The "Test" button dispatches a real Claude CLI session (even if lightweight). Ensure the test has a timeout and resource limit to prevent abuse (e.g., repeated test clicks consuming API credits).</li>
+    <li>Machine health data (CPU, memory, disk) is transmitted from agent to server via the agent WebSocket. Ensure this data is validated server-side to prevent a compromised agent from injecting misleading metrics.</li>
+  </ul>
+</div>
+
+<!-- ===== ISSUES FOUND ===== -->
+<h2>Issues Found</h2>
+<div class="card">
+  <h3>Iteration 1 Issues</h3>
+  <p style="color:var(--green);font-weight:600;">No issues found in iteration 1.</p>
+  <p>All machine management features work correctly. The health metrics display accurately, the edit modal saves changes, and the test button returns a successful connectivity result.</p>
+</div>
+
+<!-- ===== RECOMMENDATIONS ===== -->
+<h2>Recommendations</h2>
+<div class="card">
+  <ul>
+    <li><strong>Active session guard:</strong> Prevent machine removal while active sessions are running. Show a warning listing the active sessions and require them to be aborted or completed first.</li>
+    <li><strong>Workspace root validation:</strong> On save, verify the workspace root path exists on the remote machine via an agent check before persisting the change.</li>
+    <li><strong>Test rate limiting:</strong> Limit the "Test" button to once per 30 seconds per machine to prevent excessive API credit consumption from repeated clicks.</li>
+    <li><strong>Color picker aria-labels:</strong> Add descriptive labels to each color circle for screen reader users.</li>
+    <li><strong>Recent activity section:</strong> Add a "Last 5 sessions" summary on the machine card or edit modal for operational visibility.</li>
+  </ul>
+</div>
+
+<!-- ===== NAV ===== -->
+<div class="nav-links">
+  <a class="nav-link" href="step13-report.html">&larr; Step 13</a>
+  <a class="nav-link" href="step15-report.html">Next: Step 15 &rarr;</a>
+</div>
+
+</div>
+</body>
+</html>

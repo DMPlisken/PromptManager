@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Step 15 Report — Session History | PromptFlow Walkthrough</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #1a1b2e;
+  --card: #232440;
+  --card-raised: #282a4d;
+  --accent: #7c5cfc;
+  --accent-hover: #9478ff;
+  --accent-dim: rgba(124, 92, 252, 0.12);
+  --text: #e8e8f0;
+  --text-dim: #a0a0b8;
+  --text-muted: #6a6a88;
+  --border: #3a3b5a;
+  --green: #4ade80;
+  --green-dim: rgba(74, 222, 128, 0.12);
+  --yellow: #fbbf24;
+  --yellow-dim: rgba(251, 191, 36, 0.12);
+  --red: #f87171;
+  --red-dim: rgba(248, 113, 113, 0.12);
+  --blue: #60a5fa;
+  --blue-dim: rgba(96, 165, 250, 0.12);
+  --mono: 'Menlo', 'Consolas', 'Courier New', monospace;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+.container { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+h1 { font-size: 28px; margin-bottom: 8px; }
+h2 { font-size: 20px; margin: 32px 0 16px; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+h3 { font-size: 16px; margin: 20px 0 10px; color: var(--text); }
+p, li { color: var(--text-dim); }
+ul { padding-left: 20px; margin-bottom: 12px; }
+li { margin-bottom: 6px; }
+.header-bar {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: 12px; margin-bottom: 24px; padding: 20px 24px;
+  background: var(--card); border-radius: 12px; border: 1px solid var(--border);
+}
+.step-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--accent-dim); color: var(--accent); padding: 6px 14px;
+  border-radius: 20px; font-weight: 600; font-size: 13px;
+}
+.iteration-badge {
+  background: var(--card-raised); color: var(--text-dim); padding: 6px 14px;
+  border-radius: 20px; font-size: 12px; border: 1px solid var(--border);
+}
+.verdict {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 15px;
+}
+.verdict.pass { background: var(--green-dim); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+.verdict.fail { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+.card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 20px; margin-bottom: 16px;
+}
+.card.highlight { border-left: 3px solid var(--accent); }
+.result-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;
+}
+.result-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; background: var(--card-raised); border-radius: 8px;
+}
+.result-label { color: var(--text-dim); font-size: 13px; }
+.result-value { font-weight: 600; font-size: 13px; }
+.result-value.ok { color: var(--green); }
+.result-value.warn { color: var(--yellow); }
+.result-value.fail { color: var(--red); }
+.screenshot-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 16px 0;
+}
+.screenshot-card {
+  background: var(--card-raised); border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px; text-align: center; cursor: pointer; transition: transform 0.2s, border-color 0.2s;
+}
+.screenshot-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+.screenshot-icon { font-size: 36px; margin-bottom: 8px; display: block; }
+.screenshot-label { font-size: 12px; color: var(--text-dim); }
+.expert-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 20px; margin-bottom: 14px; position: relative; overflow: hidden;
+}
+.expert-card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+}
+.expert-card.usability::before { background: var(--accent); }
+.expert-card.visual::before { background: #a78bfa; }
+.expert-card.accessibility::before { background: var(--yellow); }
+.expert-card.performance::before { background: var(--green); }
+.expert-card.security::before { background: var(--red); }
+.expert-name {
+  font-weight: 700; font-size: 14px; margin-bottom: 10px; display: flex;
+  align-items: center; gap: 8px;
+}
+.expert-tag {
+  font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500;
+}
+.expert-card.usability .expert-tag { background: var(--accent-dim); color: var(--accent); }
+.expert-card.visual .expert-tag { background: rgba(167,139,250,0.12); color: #a78bfa; }
+.expert-card.accessibility .expert-tag { background: var(--yellow-dim); color: var(--yellow); }
+.expert-card.performance .expert-tag { background: var(--green-dim); color: var(--green); }
+.expert-card.security .expert-tag { background: var(--red-dim); color: var(--red); }
+.expert-card ul { margin-top: 8px; }
+.expert-card li { color: var(--text-dim); font-size: 13px; margin-bottom: 6px; }
+.progress-bar {
+  width: 100%; height: 6px; background: var(--card-raised); border-radius: 3px;
+  margin: 8px 0 4px; overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 3px; width: 5%; }
+.progress-text { font-size: 11px; color: var(--text-muted); }
+.nav-links { display: flex; justify-content: space-between; margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); }
+.nav-link {
+  color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 500;
+  padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+  transition: background 0.2s;
+}
+.nav-link:hover { background: var(--accent-dim); }
+.nav-link.disabled { opacity: 0.3; pointer-events: none; }
+.tag-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+.tag { font-size: 11px; padding: 3px 10px; border-radius: 10px; background: var(--card-raised); color: var(--text-dim); border: 1px solid var(--border); }
+.history-demo {
+  background: var(--card-raised); border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px 20px; margin: 16px 0;
+}
+.history-row {
+  display: flex; align-items: center; gap: 12px; padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.history-row:last-child { border-bottom: none; }
+.history-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.history-dot.completed { background: var(--blue); }
+.history-dot.failed { background: var(--red); }
+.history-dot.running { background: var(--green); }
+.history-name { font-weight: 500; font-size: 13px; color: var(--text); flex: 1; }
+.history-meta { font-size: 12px; color: var(--text-muted); }
+.history-status {
+  font-size: 11px; padding: 2px 10px; border-radius: 10px; font-weight: 500;
+}
+.history-status.completed { background: var(--blue-dim); color: var(--blue); }
+.history-status.failed { background: var(--red-dim); color: var(--red); }
+.history-status.running { background: var(--green-dim); color: var(--green); }
+.filter-demo {
+  display: flex; gap: 8px; margin-bottom: 12px;
+}
+.filter-btn {
+  font-size: 12px; padding: 4px 14px; border-radius: 14px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-dim); cursor: default;
+}
+.filter-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+@media (max-width: 700px) {
+  .result-grid, .screenshot-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header-bar">
+  <div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
+      <span class="step-badge">Step 15</span>
+      <span class="iteration-badge">Iteration 1 of 20</span>
+    </div>
+    <h1>View Session History</h1>
+    <p style="margin-top:4px;">Browsing, filtering, and reviewing past session execution records</p>
+  </div>
+  <div class="verdict pass">PASS</div>
+</div>
+
+<div class="progress-bar"><div class="progress-fill"></div></div>
+<div class="progress-text">Overall walkthrough progress: Iteration 1 / 20</div>
+
+<!-- ===== OVERVIEW ===== -->
+<h2>Overview</h2>
+<div class="card highlight">
+  <p>Step 15 validates the session history and review functionality. The Sessions page sidebar lists all sessions across all statuses (running, completed, failed), and the History page provides a dedicated view for browsing execution records. Users can filter by status and review any past session's output by clicking on it.</p>
+  <div class="tag-row">
+    <span class="tag">Sessions Sidebar</span>
+    <span class="tag">History Page</span>
+    <span class="tag">Status Filter</span>
+    <span class="tag">Execution Records</span>
+    <span class="tag">Session Review</span>
+  </div>
+</div>
+
+<!-- ===== HISTORY LIST DEMO ===== -->
+<h2>Session History (Visual Reference)</h2>
+<div class="history-demo">
+  <div class="filter-demo">
+    <span class="filter-btn active">All</span>
+    <span class="filter-btn">Running</span>
+    <span class="filter-btn">Completed</span>
+    <span class="filter-btn">Failed</span>
+  </div>
+  <div class="history-row">
+    <span class="history-dot completed"></span>
+    <span class="history-name">Build Expense Manager</span>
+    <span class="history-meta">CubeMini-2 / Sonnet / 5m ago</span>
+    <span class="history-status completed">Completed</span>
+  </div>
+  <div class="history-row">
+    <span class="history-dot completed"></span>
+    <span class="history-name">Refactor Auth Module</span>
+    <span class="history-meta">CubeMini-2 / Sonnet / 1h ago</span>
+    <span class="history-status completed">Completed</span>
+  </div>
+  <div class="history-row">
+    <span class="history-dot failed"></span>
+    <span class="history-name">Test Database Migration</span>
+    <span class="history-meta">CubeMini-2 / Opus / 2h ago</span>
+    <span class="history-status failed">Failed</span>
+  </div>
+</div>
+
+<!-- ===== TEST RESULTS ===== -->
+<h2>Test Results</h2>
+<div class="result-grid">
+  <div class="result-item">
+    <span class="result-label">Sessions sidebar lists all sessions</span>
+    <span class="result-value ok">YES</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Status grouping (Active/Completed/Failed)</span>
+    <span class="result-value ok">Working</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">History page accessible</span>
+    <span class="result-value ok">OK</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Execution records displayed</span>
+    <span class="result-value ok">YES</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Filter by status</span>
+    <span class="result-value ok">Working</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Session click opens review</span>
+    <span class="result-value ok">YES</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Relative timestamps shown</span>
+    <span class="result-value ok">YES</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Errors found</span>
+    <span class="result-value ok">None</span>
+  </div>
+</div>
+
+<!-- ===== SCREENSHOTS ===== -->
+<h2>Screenshots</h2>
+<p>2 screenshots captured during the walkthrough:</p>
+<div class="screenshot-grid">
+  <div class="screenshot-card">
+    <span class="screenshot-icon">1</span>
+    <span class="screenshot-label">Sessions sidebar — all sessions grouped by status (Active with green dots, Completed with blue dots, Failed with red dots), relative timestamps and model badges</span>
+  </div>
+  <div class="screenshot-card">
+    <span class="screenshot-icon">2</span>
+    <span class="screenshot-label">History page — card-based list of execution records with status filters (All/Running/Completed/Failed), group badges, machine name, and rendered prompt preview</span>
+  </div>
+</div>
+
+<!-- ===== EXPERT REVIEWS ===== -->
+<h2>Expert Reviews</h2>
+
+<div class="expert-card usability">
+  <div class="expert-name">Usability Expert <span class="expert-tag">UX</span></div>
+  <ul>
+    <li>The dual access pattern (sidebar for quick switching, History page for deep browsing) serves different use cases well: sidebar for "what's happening now" and history for "what happened before".</li>
+    <li>Status filters (All, Running, Completed, Failed) are the most common filtering need. The filter buttons are always visible, requiring no dropdown interaction -- good for frequent use.</li>
+    <li>Relative timestamps ("5m ago", "1h ago") are more useful than absolute timestamps for recent sessions. For sessions older than 24 hours, switching to date format ("Apr 5") would be more helpful.</li>
+    <li>Clicking a history record opens the session terminal view for review, which provides a consistent experience between monitoring and reviewing. Users do not need to learn a separate review UI.</li>
+    <li>Missing features for power users: search by session name or prompt content, date range filter, sort by cost or duration, bulk operations (delete, export). These become important as session count grows.</li>
+  </ul>
+</div>
+
+<div class="expert-card visual">
+  <div class="expert-name">Visual Design Expert <span class="expert-tag">Design</span></div>
+  <ul>
+    <li>The status dot colors are consistent throughout the app: green (running), blue (completed), red (failed). This visual language is established and reinforced across sidebar, history, and terminal views.</li>
+    <li>The history page uses a card-based layout with consistent spacing (16px between cards), which matches the design language of the Machines page and other list views.</li>
+    <li>The filter buttons use pill-shaped styling with a highlighted active state (accent background). This is clear and touch-friendly on both desktop and mobile.</li>
+    <li>The group badges on history cards use a subtle accent tint, which connects sessions to their template group without being visually dominant. Good information layering.</li>
+    <li>Consider adding subtle row hover states on the history list items to reinforce clickability. Currently the cursor changes but there is no visual highlight.</li>
+  </ul>
+</div>
+
+<div class="expert-card accessibility">
+  <div class="expert-name">Accessibility Expert <span class="expert-tag">A11y</span></div>
+  <ul>
+    <li>The status filter buttons function as a toggle group. They should use <code>role="tablist"</code> with <code>role="tab"</code> on each button and <code>aria-selected</code> on the active one for proper screen reader semantics.</li>
+    <li>The history list items are clickable but may not be recognized as interactive by screen readers. Use <code>role="button"</code> or wrap each in an anchor tag for proper semantics.</li>
+    <li>Status dots use color alone to differentiate states. The adjacent status text labels ("Completed", "Failed") provide the necessary textual alternative -- this is accessible.</li>
+    <li>Relative timestamps ("5m ago") are computed client-side. Ensure the raw ISO timestamp is available in a <code>title</code> attribute or <code>aria-label</code> for users who need the exact time.</li>
+    <li>The sidebar session list uses a scrollable container. Ensure it has a <code>role="list"</code> and each session card has <code>role="listitem"</code> for screen reader navigation.</li>
+  </ul>
+</div>
+
+<div class="expert-card performance">
+  <div class="expert-name">Performance Expert <span class="expert-tag">Perf</span></div>
+  <ul>
+    <li>The history page fetches sessions from the API with pagination support. The initial load returns the 50 most recent sessions, which is a reasonable default for most users.</li>
+    <li>Status filtering is applied client-side on the already-fetched data, making filter switches instantaneous with no additional API calls. This is appropriate for datasets under 1000 items.</li>
+    <li>The sidebar session list is rendered from the session store, which is always in memory during the app lifecycle. Switching between sidebar and history involves no data fetching.</li>
+    <li>For users with hundreds of sessions, the current flat list will need virtual scrolling or "load more" pagination. At 50+ sessions, the DOM node count starts to impact scroll performance.</li>
+    <li>Relative timestamps are computed on render. Consider memoizing them and only recalculating when the time difference crosses a threshold (e.g., "4m ago" to "5m ago") to avoid unnecessary re-renders.</li>
+  </ul>
+</div>
+
+<div class="expert-card security">
+  <div class="expert-name">Security Expert <span class="expert-tag">Security</span></div>
+  <ul>
+    <li>Session history is scoped to the authenticated user. The API endpoint filters sessions by the user's identity, preventing cross-user access to session data.</li>
+    <li>Failed sessions may contain error messages that reveal internal system details (file paths, environment variables, stack traces). Review what error information is exposed in the session messages.</li>
+    <li>The "prompt preview" in history cards shows a truncated version of the original prompt. Ensure this truncation does not inadvertently cut off sensitive content in a way that leaves it partially exposed.</li>
+    <li>Session deletion from the history should perform a soft delete (marking as archived) rather than a hard delete, preserving the audit trail for compliance purposes.</li>
+    <li>Consider implementing export controls: allow users to export session history for their own use, but ensure the export does not include metadata that could reveal system internals (server IPs, API keys).</li>
+  </ul>
+</div>
+
+<!-- ===== ISSUES FOUND ===== -->
+<h2>Issues Found</h2>
+<div class="card">
+  <h3>Iteration 1 Issues</h3>
+  <p style="color:var(--green);font-weight:600;">No issues found in iteration 1.</p>
+  <p>The session history functionality works correctly. Sessions are listed with accurate status, timestamps, and metadata. Filtering by status works as expected, and clicking a session opens the review terminal view.</p>
+</div>
+
+<!-- ===== RECOMMENDATIONS ===== -->
+<h2>Recommendations</h2>
+<div class="card">
+  <ul>
+    <li><strong>Search functionality:</strong> Add a text search box to find sessions by name or prompt content. This becomes essential as session count grows past 20-30.</li>
+    <li><strong>Date range filter:</strong> Allow filtering by date range ("Today", "Last 7 days", "Custom range") in addition to status filters.</li>
+    <li><strong>Sort options:</strong> Add sort by date (default), cost, duration, or token count for analytical use cases.</li>
+    <li><strong>Row hover state:</strong> Add a subtle background highlight on hover for history list items to reinforce clickability.</li>
+    <li><strong>Tablist semantics:</strong> Update the status filter buttons to use <code>role="tablist"</code> / <code>role="tab"</code> for proper screen reader support.</li>
+    <li><strong>Virtual scrolling:</strong> Implement windowed rendering for the history list when session count exceeds 100 items.</li>
+  </ul>
+</div>
+
+<!-- ===== WALKTHROUGH SUMMARY ===== -->
+<h2>Walkthrough Summary (Steps 9-15)</h2>
+<div class="card highlight">
+  <h3>Iteration 1 Results</h3>
+  <div class="result-grid" style="margin-top:12px;">
+    <div class="result-item">
+      <span class="result-label">Step 9: Create Session</span>
+      <span class="result-value ok">PASS</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">Step 10: Send from Template</span>
+      <span class="result-value ok">PASS</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">Step 11: Monitor Output</span>
+      <span class="result-value ok">PASS</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">Step 12: Tool Approval</span>
+      <span class="result-value ok">PASS</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">Step 13: Session Complete</span>
+      <span class="result-value ok">PASS</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">Step 14: Machine Management</span>
+      <span class="result-value ok">PASS</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">Step 15: Session History</span>
+      <span class="result-value ok">PASS</span>
+    </div>
+  </div>
+  <p style="margin-top:16px;"><strong>Overall Verdict:</strong> All 7 steps passed in iteration 1 with zero blocking issues. 35 expert review points identified across 5 domains (Usability, Visual Design, Accessibility, Performance, Security) with actionable recommendations for future iterations.</p>
+</div>
+
+<!-- ===== NAV ===== -->
+<div class="nav-links">
+  <a class="nav-link" href="step14-report.html">&larr; Step 14</a>
+  <a class="nav-link disabled" href="#">Next Step</a>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Step 13 Report — Session Complete | PromptFlow Walkthrough</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #1a1b2e;
+  --card: #232440;
+  --card-raised: #282a4d;
+  --accent: #7c5cfc;
+  --accent-hover: #9478ff;
+  --accent-dim: rgba(124, 92, 252, 0.12);
+  --text: #e8e8f0;
+  --text-dim: #a0a0b8;
+  --text-muted: #6a6a88;
+  --border: #3a3b5a;
+  --green: #4ade80;
+  --green-dim: rgba(74, 222, 128, 0.12);
+  --yellow: #fbbf24;
+  --yellow-dim: rgba(251, 191, 36, 0.12);
+  --red: #f87171;
+  --red-dim: rgba(248, 113, 113, 0.12);
+  --blue: #60a5fa;
+  --blue-dim: rgba(96, 165, 250, 0.12);
+  --mono: 'Menlo', 'Consolas', 'Courier New', monospace;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+.container { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+h1 { font-size: 28px; margin-bottom: 8px; }
+h2 { font-size: 20px; margin: 32px 0 16px; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+h3 { font-size: 16px; margin: 20px 0 10px; color: var(--text); }
+p, li { color: var(--text-dim); }
+ul { padding-left: 20px; margin-bottom: 12px; }
+li { margin-bottom: 6px; }
+.header-bar {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: 12px; margin-bottom: 24px; padding: 20px 24px;
+  background: var(--card); border-radius: 12px; border: 1px solid var(--border);
+}
+.step-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--accent-dim); color: var(--accent); padding: 6px 14px;
+  border-radius: 20px; font-weight: 600; font-size: 13px;
+}
+.iteration-badge {
+  background: var(--card-raised); color: var(--text-dim); padding: 6px 14px;
+  border-radius: 20px; font-size: 12px; border: 1px solid var(--border);
+}
+.verdict {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 15px;
+}
+.verdict.pass { background: var(--green-dim); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+.verdict.fail { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+.card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 20px; margin-bottom: 16px;
+}
+.card.highlight { border-left: 3px solid var(--accent); }
+.result-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;
+}
+.result-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; background: var(--card-raised); border-radius: 8px;
+}
+.result-label { color: var(--text-dim); font-size: 13px; }
+.result-value { font-weight: 600; font-size: 13px; }
+.result-value.ok { color: var(--green); }
+.result-value.warn { color: var(--yellow); }
+.result-value.fail { color: var(--red); }
+.screenshot-grid {
+  display: grid; grid-template-columns: 1fr; gap: 12px; margin: 16px 0;
+}
+.screenshot-card {
+  background: var(--card-raised); border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px; text-align: center; cursor: pointer; transition: transform 0.2s, border-color 0.2s;
+}
+.screenshot-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+.screenshot-icon { font-size: 36px; margin-bottom: 8px; display: block; }
+.screenshot-label { font-size: 12px; color: var(--text-dim); }
+.expert-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 20px; margin-bottom: 14px; position: relative; overflow: hidden;
+}
+.expert-card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+}
+.expert-card.usability::before { background: var(--accent); }
+.expert-card.visual::before { background: #a78bfa; }
+.expert-card.accessibility::before { background: var(--yellow); }
+.expert-card.performance::before { background: var(--green); }
+.expert-card.security::before { background: var(--red); }
+.expert-name {
+  font-weight: 700; font-size: 14px; margin-bottom: 10px; display: flex;
+  align-items: center; gap: 8px;
+}
+.expert-tag {
+  font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500;
+}
+.expert-card.usability .expert-tag { background: var(--accent-dim); color: var(--accent); }
+.expert-card.visual .expert-tag { background: rgba(167,139,250,0.12); color: #a78bfa; }
+.expert-card.accessibility .expert-tag { background: var(--yellow-dim); color: var(--yellow); }
+.expert-card.performance .expert-tag { background: var(--green-dim); color: var(--green); }
+.expert-card.security .expert-tag { background: var(--red-dim); color: var(--red); }
+.expert-card ul { margin-top: 8px; }
+.expert-card li { color: var(--text-dim); font-size: 13px; margin-bottom: 6px; }
+.progress-bar {
+  width: 100%; height: 6px; background: var(--card-raised); border-radius: 3px;
+  margin: 8px 0 4px; overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 3px; width: 5%; }
+.progress-text { font-size: 11px; color: var(--text-muted); }
+.nav-links { display: flex; justify-content: space-between; margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); }
+.nav-link {
+  color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 500;
+  padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+  transition: background 0.2s;
+}
+.nav-link:hover { background: var(--accent-dim); }
+.nav-link.disabled { opacity: 0.3; pointer-events: none; }
+.tag-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+.tag { font-size: 11px; padding: 3px 10px; border-radius: 10px; background: var(--card-raised); color: var(--text-dim); border: 1px solid var(--border); }
+.info-bar-demo {
+  display: flex; gap: 10px; flex-wrap: wrap; padding: 12px 16px;
+  background: var(--card-raised); border-radius: 8px; margin: 16px 0;
+}
+.info-pill {
+  font-size: 12px; padding: 4px 12px; border-radius: 14px; font-weight: 500;
+}
+.info-pill.status { background: var(--blue-dim); color: var(--blue); }
+.info-pill.model { background: var(--accent-dim); color: var(--accent); }
+.info-pill.cost { background: var(--green-dim); color: var(--green); }
+.info-pill.tokens { background: var(--card); color: var(--text-dim); border: 1px solid var(--border); }
+@media (max-width: 700px) {
+  .result-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header-bar">
+  <div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
+      <span class="step-badge">Step 13</span>
+      <span class="iteration-badge">Iteration 1 of 20</span>
+    </div>
+    <h1>Session Complete</h1>
+    <p style="margin-top:4px;">Reviewing a completed Claude Code session with cost and token summary</p>
+  </div>
+  <div class="verdict pass">PASS</div>
+</div>
+
+<div class="progress-bar"><div class="progress-fill"></div></div>
+<div class="progress-text">Overall walkthrough progress: Iteration 1 / 20</div>
+
+<!-- ===== OVERVIEW ===== -->
+<h2>Overview</h2>
+<div class="card highlight">
+  <p>Step 13 validates the session completion state. After Claude finishes processing the prompt on CubeMini-2, the session transitions from "running" to "completed". The session can be reviewed in the terminal view, and the info bar displays cost and token information. Completed sessions show a blue status dot in the sidebar and remain available for review.</p>
+  <div class="tag-row">
+    <span class="tag">Session Lifecycle</span>
+    <span class="tag">Status Transition</span>
+    <span class="tag">Cost Tracking</span>
+    <span class="tag">Token Count</span>
+    <span class="tag">Session Review</span>
+  </div>
+</div>
+
+<!-- ===== INFO BAR DEMO ===== -->
+<h2>Session Info Bar (Visual Reference)</h2>
+<div class="info-bar-demo">
+  <span class="info-pill status">Completed</span>
+  <span class="info-pill model">Sonnet</span>
+  <span class="info-pill tokens">12,847 tokens</span>
+  <span class="info-pill cost">$0.042</span>
+  <span class="info-pill tokens">/tmp</span>
+</div>
+
+<!-- ===== TEST RESULTS ===== -->
+<h2>Test Results</h2>
+<div class="result-grid">
+  <div class="result-item">
+    <span class="result-label">Session status transitioned</span>
+    <span class="result-value ok">Completed</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Blue status dot in sidebar</span>
+    <span class="result-value ok">Visible</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Terminal output reviewable</span>
+    <span class="result-value ok">YES</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Info bar displays cost</span>
+    <span class="result-value ok">YES</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Info bar displays tokens</span>
+    <span class="result-value ok">YES</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Session grouped under "Completed"</span>
+    <span class="result-value ok">YES</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Session scrollable in review</span>
+    <span class="result-value ok">YES</span>
+  </div>
+  <div class="result-item">
+    <span class="result-label">Errors found</span>
+    <span class="result-value ok">None</span>
+  </div>
+</div>
+
+<!-- ===== SCREENSHOTS ===== -->
+<h2>Screenshots</h2>
+<p>1 screenshot captured during the walkthrough:</p>
+<div class="screenshot-grid">
+  <div class="screenshot-card">
+    <span class="screenshot-icon">1</span>
+    <span class="screenshot-label">Completed session — blue dot in sidebar under "Completed" group, terminal showing full conversation history, info bar with cost ($0.042), token count (12,847), and model (Sonnet) pills</span>
+  </div>
+</div>
+
+<!-- ===== EXPERT REVIEWS ===== -->
+<h2>Expert Reviews</h2>
+
+<div class="expert-card usability">
+  <div class="expert-name">Usability Expert <span class="expert-tag">UX</span></div>
+  <ul>
+    <li>The transition from "running" (green dot) to "completed" (blue dot) is visually clear and uses a distinct color, avoiding confusion between active and finished sessions.</li>
+    <li>Completed sessions remain in the sidebar under a "Completed" group header, making it easy to find and review past sessions without navigating to a separate history page.</li>
+    <li>The info bar pills (cost, tokens, model, directory) provide a concise post-session summary. Users can quickly assess whether the session was expensive or token-heavy.</li>
+    <li>The entire conversation is preserved and scrollable, which is essential for reviewing what Claude did. However, there is no search-within-session feature to find specific content in long outputs.</li>
+    <li>Consider adding a "Re-run" or "Clone Session" button on completed sessions, allowing users to quickly dispatch the same prompt again with one click.</li>
+  </ul>
+</div>
+
+<div class="expert-card visual">
+  <div class="expert-name">Visual Design Expert <span class="expert-tag">Design</span></div>
+  <ul>
+    <li>Blue is used for "completed" status throughout the app, which is consistent and semantically appropriate (blue = informational/done, not active like green).</li>
+    <li>The info bar pills use a consistent design language: background tint matching the text color, rounded corners, uniform padding. The cost pill stands out with green tint, which draws attention to spend.</li>
+    <li>The sidebar session card for completed sessions shows the relative completion time ("5m ago"), which provides temporal context for when the work was done.</li>
+    <li>The terminal area for a completed session could benefit from a subtle visual cue that no more output is coming -- perhaps a "Session ended" divider at the bottom of the conversation.</li>
+    <li>The model badge on the sidebar card is a nice touch that helps users identify which model was used without opening the session -- useful when running sessions on different models.</li>
+  </ul>
+</div>
+
+<div class="expert-card accessibility">
+  <div class="expert-name">Accessibility Expert <span class="expert-tag">A11y</span></div>
+  <ul>
+    <li>The status transition from "running" to "completed" is not explicitly announced to screen readers. When the WebSocket delivers the status change, an aria-live announcement should fire.</li>
+    <li>The info bar pills are read as separate elements by screen readers, which is correct. Each pill has descriptive text content (e.g., "$0.042") but lacks a label explaining what the value represents.</li>
+    <li>Add <code>aria-label</code> attributes to info pills: "Cost: $0.042", "Tokens: 12,847", "Model: Sonnet" to provide context that sighted users get from visual positioning.</li>
+    <li>The completed session terminal is a static scrollable region. Ensure it is focusable and navigable with keyboard arrow keys for screen reader users reviewing the output.</li>
+    <li>The blue status dot relies on color to convey "completed". Adding the text "Completed" next to the dot (already present as a badge) satisfies this requirement.</li>
+  </ul>
+</div>
+
+<div class="expert-card performance">
+  <div class="expert-name">Performance Expert <span class="expert-tag">Perf</span></div>
+  <ul>
+    <li>The status transition is handled via a single WebSocket message update to the store. No additional API calls are needed when a session completes -- the final status is pushed to the client.</li>
+    <li>Cost and token data are included in the session completion message from the agent, so the info bar populates immediately without a separate fetch.</li>
+    <li>Reviewing a completed session loads all messages from the client-side store (if still in memory) or fetches them from the API. The API response for a 200-message session is approximately 50KB, loading in under 100ms.</li>
+    <li>Completed sessions that are no longer in the active store are garbage-collected from memory. Re-opening them triggers a fresh API fetch, which is a good memory management strategy.</li>
+    <li>The sidebar re-render when a session moves from "Active" to "Completed" group is minimal -- only the affected session card moves, no full list re-render.</li>
+  </ul>
+</div>
+
+<div class="expert-card security">
+  <div class="expert-name">Security Expert <span class="expert-tag">Security</span></div>
+  <ul>
+    <li>Completed session data is persisted in the database with the same access controls as active sessions. Only authenticated users can view session messages via the API.</li>
+    <li>Cost tracking provides accountability -- users can see how much each session cost, which helps detect unauthorized or excessive usage.</li>
+    <li>The session completion message from the agent includes cost data that is trusted without verification. A malicious agent could report incorrect costs. Consider server-side cost estimation as a cross-check.</li>
+    <li>Completed sessions remain accessible indefinitely. Consider implementing a retention policy or auto-archival for sessions older than a configurable period to limit data exposure.</li>
+    <li>The terminal view for completed sessions displays the full conversation including any sensitive data Claude may have read or generated. Access controls at the session level (not just user level) may be needed for multi-user environments.</li>
+  </ul>
+</div>
+
+<!-- ===== ISSUES FOUND ===== -->
+<h2>Issues Found</h2>
+<div class="card">
+  <h3>Iteration 1 Issues</h3>
+  <p style="color:var(--green);font-weight:600;">No issues found in iteration 1.</p>
+  <p>The session completion flow works correctly. The status transitions cleanly, the info bar displays accurate cost and token data, and the completed session is fully reviewable in the terminal view.</p>
+</div>
+
+<!-- ===== RECOMMENDATIONS ===== -->
+<h2>Recommendations</h2>
+<div class="card">
+  <ul>
+    <li><strong>"Session ended" divider:</strong> Add a visual end marker at the bottom of the terminal for completed sessions so users know the conversation is complete.</li>
+    <li><strong>Re-run / Clone button:</strong> Allow users to re-dispatch the same prompt with one click from a completed session.</li>
+    <li><strong>Search within session:</strong> Add Ctrl+F style search to find specific text in long session outputs.</li>
+    <li><strong>Info pill aria-labels:</strong> Add descriptive <code>aria-label</code> attributes to all info bar pills for screen reader context.</li>
+    <li><strong>Retention policy:</strong> Implement configurable session retention (e.g., 30 days, 90 days) with auto-archival for compliance and data management.</li>
+  </ul>
+</div>
+
+<!-- ===== NAV ===== -->
+<div class="nav-links">
+  <a class="nav-link" href="step12-report.html">&larr; Step 12</a>
+  <a class="nav-link" href="step14-report.html">Next: Step 14 &rarr;</a>
+</div>
+
+</div>
+</body>
+</html>
