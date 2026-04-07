@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
+import { api } from "../api/client";
+import { sessionStore } from "../stores/sessionStore";
 import {
   useSessionSelector,
   useSessionMessages,
@@ -127,10 +129,29 @@ export default function SessionsPage() {
     actions.loadSessions().catch(() => {});
   }, [actions]);
 
-  // Subscribe to active session messages via WS
+  // Subscribe to active session messages via WS AND load existing messages from API
   useEffect(() => {
     if (activeSessionId) {
       send({ type: "session.subscribe", sessionId: activeSessionId });
+      // Load existing messages from DB (for completed/past sessions)
+      api.getSessionMessages(activeSessionId).then((msgs) => {
+        if (msgs.length > 0) {
+          const sessionMsgs = msgs.map((m: any, i: number) => ({
+            id: `${activeSessionId}-db-${i}`,
+            sessionId: activeSessionId,
+            sequence: m.sequence || i,
+            role: m.role || "assistant",
+            type: m.message_type || "text",
+            content: m.content || "",
+            timestamp: m.created_at || new Date().toISOString(),
+          }));
+          sessionStore.dispatch({
+            type: "MESSAGES_APPENDED",
+            sessionId: activeSessionId,
+            messages: sessionMsgs,
+          });
+        }
+      }).catch(() => {});
     }
   }, [activeSessionId, send]);
 
