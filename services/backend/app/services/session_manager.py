@@ -71,7 +71,34 @@ class SessionManager:
         await db.commit()
         await db.refresh(session)
 
-        # If machine_id is provided, dispatch to remote agent instead of sidecar
+        # If machine_id is provided, dispatch to remote agent
+        # If machine_id is None but online agents exist, auto-select the least loaded
+        if machine_id is None:
+            from app.services.agent_manager import agent_manager
+            online_uuids = agent_manager.get_online_machines()
+            if online_uuids:
+                # Auto-select: find the machine with the most available capacity
+                from app.models.machine import Machine as MachineModel
+                result = await db.execute(
+                    select(MachineModel).where(
+                        MachineModel.machine_uuid.in_(online_uuids)
+                    )
+                )
+                online_machines = result.scalars().all()
+                if online_machines:
+                    # Pick machine with lowest active session ratio
+                    best = min(
+                        online_machines,
+                        key=lambda m: (
+                            (m.last_health or {}).get("activeSessions", 0)
+                            / max(m.max_concurrent_sessions, 1)
+                        ),
+                    )
+                    machine_id = best.id
+                    session.machine_id = machine_id
+                    await db.commit()
+                    logger.info("auto_selected_machine", machine_id=machine_id, machine_name=best.name)
+
         if machine_id is not None:
             await self._create_session_on_agent(
                 db=db,
@@ -86,7 +113,7 @@ class SessionManager:
             )
             return session
 
-        # Fallback: create on the local sidecar
+        # Fallback: create on the local sidecar (only if no remote agents)
         try:
             await sidecar_client.create_session(
                 session_id=session_id,
