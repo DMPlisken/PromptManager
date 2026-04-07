@@ -51,17 +51,27 @@ export default function Button({ variant = "secondary", children, onClick, type 
   const [hovered, setHovered] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const timerRef = useRef<number>();
+  const confirmingRef = useRef(false);
 
   useEffect(() => () => clearTimeout(timerRef.current), []);
 
   const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
     if (disabled) return;
-    if (confirm && variant === "destructive" && !confirming) {
+    if (confirm && variant === "destructive" && !confirmingRef.current) {
       setConfirming(true);
-      timerRef.current = window.setTimeout(() => setConfirming(false), 3000);
+      confirmingRef.current = true;
+      clearTimeout(timerRef.current);
+      timerRef.current = window.setTimeout(() => {
+        setConfirming(false);
+        confirmingRef.current = false;
+      }, 5000);
       return;
     }
     setConfirming(false);
+    confirmingRef.current = false;
+    clearTimeout(timerRef.current);
     onClick?.(e);
   };
 

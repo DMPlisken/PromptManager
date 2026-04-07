@@ -308,7 +308,7 @@ export default function Layout({ children, onHelp }: { children: ReactNode; onHe
       </aside>
 
       {/* Main */}
-      <main style={{ flex: 1, overflowY: "auto", padding: 24 }} key={location.pathname}>
+      <main style={{ flex: 1, overflowY: "auto", padding: 24 }}>
         <ErrorBoundary>
           {children}
         </ErrorBoundary>
