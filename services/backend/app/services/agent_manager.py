@@ -263,10 +263,52 @@ class AgentConnectionManager:
             return
 
         # Build message for browser clients
-        output_msg = msg.get("message", {})
-        msg_role = output_msg.get("role", "assistant")
-        msg_type = output_msg.get("type", "text")
-        content_preview = str(output_msg.get("content", ""))[:120]
+        # The agent sends raw stream-json data in the "data" field
+        raw_data = msg.get("data") or msg.get("message") or {}
+
+        # Extract content from stream-json format
+        # Claude stream-json has: {"type": "assistant", "message": {"content": [{"type": "text", "text": "..."}]}}
+        # Or simple: {"type": "text", "text": "..."}
+        content_text = ""
+        msg_type = "text"
+        msg_role = "assistant"
+
+        if isinstance(raw_data, dict):
+            raw_type = raw_data.get("type", "")
+
+            if raw_type == "assistant":
+                msg_role = "assistant"
+                # Extract text from content blocks
+                message_obj = raw_data.get("message", {})
+                content_blocks = message_obj.get("content", []) if isinstance(message_obj, dict) else []
+                for block in content_blocks:
+                    if isinstance(block, dict):
+                        if block.get("type") == "text":
+                            content_text += block.get("text", "")
+                            msg_type = "text"
+                        elif block.get("type") == "tool_use":
+                            content_text += f"Tool: {block.get('name', '?')} — {json.dumps(block.get('input', {}))[:200]}"
+                            msg_type = "tool_use"
+                        elif block.get("type") == "tool_result":
+                            content_text += str(block.get("content", ""))[:500]
+                            msg_type = "tool_result"
+            elif raw_type == "result":
+                msg_role = "result"
+                content_text = str(raw_data.get("result", ""))
+                msg_type = "result"
+            elif raw_type in ("system", "error"):
+                msg_role = "system"
+                content_text = raw_data.get("error", raw_data.get("content", str(raw_data)))
+                msg_type = raw_type
+            else:
+                # Fallback: try common fields
+                content_text = raw_data.get("text", raw_data.get("content", ""))
+                if isinstance(content_text, list):
+                    content_text = str(content_text)
+                content_text = str(content_text)
+                msg_type = raw_type or "text"
+
+        content_preview = content_text[:120] if content_text else "(no content)"
 
         logger.debug(
             "agent_session_output",
@@ -281,31 +323,36 @@ class AgentConnectionManager:
             "type": "session.message",
             "sessionId": session_id,
             "sequence": msg.get("sequence", 0),
-            "message": output_msg,
+            "message": {
+                "role": msg_role,
+                "type": msg_type,
+                "content": content_text[:50_000],
+            },
         }
         await session_manager._broadcast(session_id, ws_msg)
 
-        # Persist message to DB
-        from app.models.session_message import SessionMessage
+        # Persist message to DB (only if there's actual content)
+        if content_text.strip():
+            from app.models.session_message import SessionMessage
 
-        try:
-            async with async_session_factory() as db:
-                db_msg = SessionMessage(
+            try:
+                async with async_session_factory() as db:
+                    db_msg = SessionMessage(
+                        session_id=session_id,
+                        sequence=msg.get("sequence", 0),
+                        role=msg_role,
+                        content=content_text[:100_000],
+                        message_type=msg_type,
+                        metadata_json=raw_data,
+                    )
+                    db.add(db_msg)
+                    await db.commit()
+            except Exception as exc:
+                logger.warning(
+                    "agent_message_persist_failed",
                     session_id=session_id,
-                    sequence=msg.get("sequence", 0),
-                    role=output_msg.get("role", "assistant"),
-                    content=str(output_msg.get("content", ""))[:100_000],
-                    message_type=output_msg.get("type", "text"),
-                    metadata_json=msg,
+                    error=str(exc),
                 )
-                db.add(db_msg)
-                await db.commit()
-        except Exception as exc:
-            logger.warning(
-                "agent_message_persist_failed",
-                session_id=session_id,
-                error=str(exc),
-            )
 
     async def _handle_session_started(
         self, machine_uuid: str, msg: dict, db: AsyncSession
