@@ -176,6 +176,14 @@ export default function TasksPage({ onHelp }: { onHelp?: (id: string) => void })
     await load();
   };
 
+  const handleDuplicate = async (taskId: number) => {
+    try {
+      const newTask = await api.duplicateTask(taskId);
+      toast.success("Task duplicated", `"${newTask.name}" created`);
+      await load();
+    } catch { toast.error("Failed to duplicate task"); }
+  };
+
   const handleSetTaskTags = async (taskId: number, tagId: number, checked: boolean) => {
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
@@ -384,6 +392,20 @@ export default function TasksPage({ onHelp }: { onHelp?: (id: string) => void })
                           ))}
                         </div>
                       )}
+                      {/* Duplicate button */}
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDuplicate(t.id); }}
+                        style={{
+                          background: "var(--bg-input)", border: "1px solid var(--border)",
+                          borderRadius: "var(--radius)", color: "var(--text-muted)",
+                          fontSize: 11, cursor: "pointer", padding: "4px 8px", fontFamily: "inherit",
+                          display: "flex", alignItems: "center", gap: 4,
+                          transition: "all 0.15s",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-muted)"; }}
+                        title="Duplicate task"
+                      >{"\u2398"} Copy</button>
                       {/* Tag assign button */}
                       <button
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTagPopoverTaskId(tagPopoverTaskId === t.id ? null : t.id); }}

@@ -124,6 +124,8 @@ export const api = {
     request<void>(`/tags/${id}`, { method: "DELETE" }),
   setTaskTags: (taskId: number, tagIds: number[]) =>
     request<void>(`/tasks/${taskId}/tags`, { method: "PUT", body: JSON.stringify(tagIds) }),
+  duplicateTask: (taskId: number) =>
+    request<import("../types").Task>(`/tasks/${taskId}/duplicate`, { method: "POST" }),
 
   // Task-Template Images (persistent)
   uploadTaskImage: async (taskId: number, templateId: number, file: File, filePath: string, order: number) => {

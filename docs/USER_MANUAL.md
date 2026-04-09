@@ -1,7 +1,7 @@
 # PromptFlow — User Manual
 
 **Version:** 2.0
-**Last updated:** 2026-04-04
+**Last updated:** 2026-04-09
 
 > **Note:** This manual is also available interactively inside the app. Click the **"Manual"** link in the sidebar or click any **"?"** button next to a section header for context-specific help. The interactive manual and this file are kept in sync — the source of truth is `src/data/helpContent.ts`.
 
@@ -288,7 +288,18 @@ Click **"Delete"** on an expanded execution to remove it from history.
 5. Select "Audit Prompt" → copy → use it.
 6. Save each execution to history with notes about the outcome.
 
-### Workflow 3: Re-using a Past Prompt
+### Workflow 3: Duplicating a Task
+
+1. On the Tasks overview page, find the task you want to copy.
+2. Click the **"Copy"** button on the task card.
+3. A new task is created with the suffix "(copy)" containing:
+   - The same templates (in the same order, with use counts reset to 0)
+   - The same variable values
+   - The same tags
+   - The same image attachments
+4. Execution history is **not** copied — the duplicate starts fresh.
+
+### Workflow 4: Re-using a Past Prompt
 
 1. Go to History.
 2. Find the execution you want to re-use.
