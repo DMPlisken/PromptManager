@@ -2,4 +2,10 @@
 
 ### 2026-04-04 12:00 — Initial project setup and scaffolding (`main`)
 
+### 2026-04-09 — Duplicate task feature request (`feat/28-duplicate-task`)
+
+> I want to have the possibility to copy a Taskgroup from the Tasks overview page to make a new task group with exactly the same prompts, filters and complete content.
+
+### 2026-04-04 12:00 — Initial project setup and scaffolding (`main`)
+
 > i create different prompts which i use recucurring. the prompts usually have some placeholders which i have to adjust (refill) each time. Usually some prompts (same or different ones) use the same information for the placeholders. Typical information are: Title of task or Issue, Content/Description of task/Issue, number of iterations requested, Artefakt documents like html output, md, or similar. I would like to have a small tool, where i can manage the prompts, adjust and fill up the prompt templates (without writing all the information again) and can copy the final prompt for the task. i want also to store persistant the prompt templates (with grouping - e.g. Design, Develop, Audit Prompt - as a prompt group using the same variables - Placeholders) and the performed tasks and fixes with the used final prompts. this could be done in a docker with containers. i am open for your proposals. the folder "PromptManager" in the repo folder is already created. Use it. The claude.md shall be adapted for this project but most of it shall be used. we will need also a git repository, which you shall setup. i already created it as a project in git (https://github.com/DMPlisken/PromptManager.git).

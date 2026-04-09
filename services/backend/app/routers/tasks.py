@@ -238,6 +238,62 @@ async def set_task_tags(task_id: int, tag_ids: list[int], db: AsyncSession = Dep
     await db.commit()
 
 
+@router.post("/{task_id}/duplicate", response_model=TaskResponse, status_code=201)
+async def duplicate_task(task_id: int, db: AsyncSession = Depends(get_db)):
+    """Duplicate a task with all its templates, tags, images, and variable values."""
+    result = await db.execute(
+        select(Task).options(
+            selectinload(Task.task_templates),
+            selectinload(Task.task_tags),
+        ).where(Task.id == task_id)
+    )
+    source = result.scalar_one_or_none()
+    if not source:
+        raise HTTPException(404, "Task not found")
+
+    # Create new task
+    new_task = Task(
+        name=f"{source.name} (copy)",
+        description=source.description,
+        variable_values=dict(source.variable_values) if source.variable_values else {},
+    )
+    db.add(new_task)
+    await db.flush()
+
+    # Copy templates (reset use_count)
+    for tt in source.task_templates:
+        db.add(TaskTemplate(
+            task_id=new_task.id, template_id=tt.template_id,
+            order=tt.order, use_count=0,
+        ))
+
+    # Copy tags
+    for tt in source.task_tags:
+        db.add(TaskTag(task_id=new_task.id, tag_id=tt.tag_id))
+
+    # Copy task-template images
+    from app.models.task_template_image import TaskTemplateImage
+    img_result = await db.execute(
+        select(TaskTemplateImage).where(TaskTemplateImage.task_id == task_id)
+    )
+    for img in img_result.scalars().all():
+        db.add(TaskTemplateImage(
+            task_id=new_task.id, template_id=img.template_id,
+            file_path=img.file_path, stored_path=img.stored_path,
+            original_name=img.original_name, file_size=img.file_size,
+            mime_type=img.mime_type, display_order=img.display_order,
+        ))
+
+    await db.commit()
+
+    # Reload with relationships
+    result = await db.execute(
+        select(Task).options(selectinload(Task.task_templates)).where(Task.id == new_task.id)
+    )
+    task = result.scalar_one()
+    return await _build_task_response(task, db)
+
+
 @router.post("/{task_id}/render/{template_id}", response_model=TaskRenderResponse)
 async def render_task_template(task_id: int, template_id: int, db: AsyncSession = Depends(get_db)):
     """Render a template using the task's variable values and save as execution."""

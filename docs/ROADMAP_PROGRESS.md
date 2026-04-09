@@ -18,8 +18,9 @@
 - [x] Frontend: Save execution to history
 - [x] Frontend: Execution history page with filtering
 
-### Pending
-- [ ] Import/export prompt groups (JSON)
+### v2.x Enhancements
+- [x] Task system with templates, variables, tags, images (#28 — duplicate task feature)
+- [x] Import/export prompt groups (JSON)
 - [ ] Search across templates
 - [ ] Template ordering (drag-and-drop)
 - [ ] Variable validation rules
